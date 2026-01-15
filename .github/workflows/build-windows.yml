@@ -13,19 +13,19 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v3
 
-    - name: Set up MSVC environment
-      uses: microsoft/setup-msbuild@v1
-
     - name: Create artifacts folder
       run: mkdir artifacts
 
-    - name: Compile PortAudio DLL
+    - name: Build PortAudio DLL
       shell: cmd
       run: |
-        REM Активируем Visual Studio Developer Command Prompt
-        call "%VS160COMNTOOLS%\VsDevCmd.bat" -arch=amd64
+        REM Найти путь к Visual Studio 2022 Build Tools
+        for /f "usebackq tokens=*" %%i in (`"C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath"`) do set VS_PATH=%%i
 
-        REM Собираем DLL
+        REM Активировать среду компилятора x64
+        call "%VS_PATH%\VC\Auxiliary\Build\vcvarsall.bat" x64
+
+        REM Собрать DLL
         cl /LD /I include /Fe:artifacts\portaudio.dll src\*.cpp /DPA_CHANNELS=4
 
     - name: Upload DLL artifact
