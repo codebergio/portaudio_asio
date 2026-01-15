@@ -19,31 +19,22 @@ jobs:
     - name: Check directory structure
       shell: pwsh
       run: |
-        Write-Host "Checking for CMakeLists.txt files..."
-        Get-ChildItem -Path . -Recurse -Depth 3 -Filter "CMakeLists.txt" | Select-Object FullName
-        Write-Host "`n--- Root directory contents ---"
-        Get-ChildItem -Path . | Select-Object Name, PSIsContainer
-        Write-Host "`n--- Portaudio directory contents ---"
+        Write-Host "Checking portaudio directory..."
         if (Test-Path "portaudio") {
-          Get-ChildItem -Path "portaudio" -Depth 1 | Select-Object Name, PSIsContainer
+          Get-ChildItem -Path "portaudio" -Depth 1 | Select-Object Name
+          Write-Host "`nMSVC directory:"
+          if (Test-Path "portaudio/msvc") {
+            Get-ChildItem -Path "portaudio/msvc"
+          }
         } else {
           Write-Host "portaudio directory not found!"
         }
 
-    - name: Create build directory
-      working-directory: portaudio
+    - name: Build PortAudio with MSBuild
+      shell: cmd
       run: |
-        mkdir -p build
-
-    - name: Configure CMake
-      working-directory: portaudio
-      run: |
-        cmake -B build -S . -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=Release
-
-    - name: Build PortAudio
-      working-directory: portaudio
-      run: |
-        cmake --build build --config Release -j 4
+        cd portaudio\msvc
+        msbuild portaudio.sln /p:Configuration=Release /p:Platform=x64 /p:PlatformToolset=v143 /m:4
 
     - name: Create artifacts directory
       run: mkdir artifacts
@@ -51,9 +42,32 @@ jobs:
     - name: Copy DLL artifacts
       shell: pwsh
       run: |
-        Copy-Item "portaudio/build/Release/portaudio.dll" -Destination "artifacts/portaudio.dll" -ErrorAction SilentlyContinue
-        Copy-Item "portaudio/build/Release/portaudio.lib" -Destination "artifacts/portaudio.lib" -ErrorAction SilentlyContinue
-        Get-ChildItem artifacts/
+        $searchPaths = @(
+          "portaudio/msvc/Release",
+          "portaudio/msvc/x64/Release",
+          "portaudio/build/Release"
+        )
+        
+        foreach ($path in $searchPaths) {
+          if (Test-Path $path) {
+            Write-Host "Found files in: $path"
+            Get-ChildItem -Path $path -Filter "*.dll" -Recurse | ForEach-Object {
+              Copy-Item $_.FullName -Destination "artifacts/portaudio.dll" -Force
+              Write-Host "Copied: $($_.Name)"
+            }
+            Get-ChildItem -Path $path -Filter "*.lib" -Recurse | ForEach-Object {
+              Copy-Item $_.FullName -Destination "artifacts/portaudio.lib" -Force
+              Write-Host "Copied: $($_.Name)"
+            }
+          }
+        }
+        
+        if (Test-Path "artifacts") {
+          Write-Host "`nArtifacts:"
+          Get-ChildItem artifacts/
+        } else {
+          Write-Host "No artifacts found!"
+        }
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
