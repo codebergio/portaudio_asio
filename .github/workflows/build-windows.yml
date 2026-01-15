@@ -38,7 +38,7 @@ jobs:
         copy build\Release\portaudio.dll artifacts\
 
     - name: Upload DLL artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: portaudio-dll
         path: artifacts/portaudio.dll
