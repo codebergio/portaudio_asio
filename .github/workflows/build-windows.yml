@@ -1,3 +1,30 @@
-- name: Build PortAudio DLL
-  run: |
-    cl /LD /I include /Fe:artifacts/portaudio.dll src\*.cpp
+name: Build PortAudio DLL Windows
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Set up MSVC environment
+      uses: microsoft/setup-msbuild@v1
+
+    - name: Create artifacts folder
+      run: mkdir artifacts
+
+    - name: Compile PortAudio DLL
+      run: |
+        cl /LD /I include /Fe:artifacts/portaudio.dll src\*.cpp
+
+    - name: Upload DLL artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: portaudio-dll
+        path: artifacts/portaudio.dll
