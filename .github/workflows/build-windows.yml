@@ -14,6 +14,13 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
+    - name: Check directory structure
+      shell: pwsh
+      run: |
+        Get-ChildItem -Path . -Recurse -Depth 2 -Filter "CMakeLists.txt" | Select-Object FullName
+        Write-Host "---"
+        Get-ChildItem -Path .
+
     - name: Create build directory
       working-directory: portaudio
       run: |
