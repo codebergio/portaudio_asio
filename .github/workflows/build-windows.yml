@@ -17,40 +17,36 @@ jobs:
         submodules: false
         fetch-depth: 0
 
-    - name: Initialize portaudio submodule
+    - name: Verify portaudio directory
       shell: pwsh
       run: |
-        Write-Host "Initializing portaudio submodule..."
-        git submodule init portaudio
-        git submodule update --init --recursive portaudio --depth 1 2>&1 | Tee-Object -Variable output
-        
-        if ($LASTEXITCODE -ne 0) {
-          Write-Host "Submodule update failed, trying to clone directly..."
-          if (Test-Path "portaudio") {
-            Remove-Item -Recurse -Force portaudio
-          }
-          git clone --depth 1 https://github.com/PortAudio/portaudio.git portaudio
-        }
-
-    - name: Check directory structure
-      shell: pwsh
-      run: |
-        Write-Host "Current directory: $(Get-Location)"
         Write-Host "Checking portaudio directory..."
         if (Test-Path "portaudio") {
-          Write-Host "✓ portaudio found"
+          Write-Host "✓ portaudio directory found"
           Get-ChildItem -Path "portaudio" -Depth 0 | Select-Object Name
-          Write-Host "`nChecking msvc subdirectory:"
-          if (Test-Path "portaudio/msvc") {
-            Write-Host "✓ msvc directory found"
-            Get-ChildItem -Path "portaudio/msvc" | Select-Object Name
-          } else {
-            Write-Host "✗ msvc directory NOT found"
-            Get-ChildItem -Path "portaudio" -Recurse -Depth 2 | Where-Object { $_.Name -eq "msvc" -or $_.Name -eq "portaudio.sln" }
-          }
         } else {
           Write-Host "✗ portaudio directory NOT found!"
-          Get-ChildItem -Path "." | Select-Object Name
+          exit 1
+        }
+
+    - name: Verify debug code presence
+      shell: pwsh
+      run: |
+        Write-Host "Checking for debug code in pa_asio.cpp..."
+        $debugStrings = @(
+          "portaudio_asio_debug.txt",
+          "PortAudio ASIO DLL LOADED",
+          "PaAsio_Initialize: Starting ASIO host API initialization"
+        )
+        
+        foreach ($str in $debugStrings) {
+          $found = Select-String -Path "portaudio/src/hostapi/asio/pa_asio.cpp" -Pattern $str
+          if ($found) {
+            Write-Host "✓ Found: $str"
+          } else {
+            Write-Host "✗ NOT found: $str"
+            exit 1
+          }
         }
 
     - name: Find MSBuild
