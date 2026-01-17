@@ -202,7 +202,8 @@ static void WriteDebugLog(const char *fmt, ...)
 #endif
 #define PA_DEBUG(fmt_and_args) DebugMsg fmt_and_args
 
-#define PA_DEBUG_LOG(fmt_and_args) DebugMsg fmt_and_args
+/* Alternative macro for explicit format strings with multiple arguments */
+#define PA_DEBUG_LOG(...) DebugMsg(__VA_ARGS__)
 #ifndef WIN32
 #define WIN32
 #endif
