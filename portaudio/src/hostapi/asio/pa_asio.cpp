@@ -112,98 +112,6 @@
 */
 
 /* DEBUG FILE LOGGING - for easier debugging without DebugView */
-static FILE *debugLogFile = NULL;
-
-static void DebugMsg(const char *fmt, ...)
-{
-    char msg[1024];
-    va_list args;
-    va_start(args, fmt);
-    vsnprintf(msg, sizeof(msg), fmt, args);
-    va_end(args);
-    
-    /* Output to debug console (DebugView can capture this) */
-    OutputDebugString(msg);
-    
-    /* Also write to file if available */
-    if (debugLogFile) {
-        fprintf(debugLogFile, "%s", msg);
-        fflush(debugLogFile);
-    }
-}
-
-/* DllMain - called when DLL is loaded/unloaded */
-BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved)
-{
-    if (fdwReason == DLL_PROCESS_ATTACH) {
-        OutputDebugString("=== PortAudio ASIO DLL LOADED ===\n");
-        OutputDebugString("If you see this message, the modified DLL is being loaded!\n");
-        OutputDebugString("======================================\n");
-    }
-    return TRUE;
-}
-
-static void OpenDebugLog(void)
-{
-    if (!debugLogFile) {
-        char logPath[MAX_PATH];
-        
-        /* Try current working directory */
-        strcpy(logPath, ".\\portaudio_asio_debug.txt");
-        debugLogFile = fopen(logPath, "w");
-        
-        if (debugLogFile) {
-            fprintf(debugLogFile, "=== PortAudio ASIO Debug Log Started ===\n");
-            fflush(debugLogFile);
-            DebugMsg("PortAudio ASIO: Debug log created at %s\n", logPath);
-            return;
-        }
-        
-        /* Try Windows temp directory */
-        if (GetTempPath(sizeof(logPath), logPath)) {
-            strcat(logPath, "portaudio_asio_debug.txt");
-            debugLogFile = fopen(logPath, "w");
-            if (debugLogFile) {
-                fprintf(debugLogFile, "=== PortAudio ASIO Debug Log Started ===\n");
-                fflush(debugLogFile);
-                DebugMsg("PortAudio ASIO: Debug log created at %s\n", logPath);
-                return;
-            }
-        }
-        
-        DebugMsg("PortAudio ASIO: Could not create debug log file!\n");
-    }
-}
-
-static void CloseDebugLog(void)
-{
-    if (debugLogFile) {
-        fprintf(debugLogFile, "=== PortAudio ASIO Debug Log Ended ===\n");
-        fclose(debugLogFile);
-        debugLogFile = NULL;
-    }
-}
-
-static void WriteDebugLog(const char *fmt, ...)
-{
-    if (debugLogFile) {
-        va_list args;
-        va_start(args, fmt);
-        vfprintf(debugLogFile, fmt, args);
-        va_end(args);
-        fflush(debugLogFile);
-    }
-}
-
-// /* Override PA_DEBUG to use OutputDebugString + file logging */
-// /* Note: PA_DEBUG is used as PA_DEBUG(("format", args)) with double parentheses */
-// #ifdef PA_DEBUG
-// #undef PA_DEBUG
-// #endif
-// #define PA_DEBUG(fmt_and_args) DebugMsg fmt_and_args
-
-// /* Alternative macro for explicit format strings with multiple arguments */
-// #define PA_DEBUG_LOG(...) DebugMsg(__VA_ARGS__)
 #ifndef WIN32
 #define WIN32
 #endif
@@ -2382,39 +2290,33 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
        - If driver honors channelNum: buffers 2/3 map to physical 3/4 ✓
        - If driver ignores channelNum: array index 2/3 maps to physical 3/4 ✓
        
-       DEBUG: Force channel offset to always be 2 for testing
+    /*
+       Determine channel offset:
+       - If outputChannelOffset parameter is 0: use default channels 1/2
+       - If outputChannelOffset parameter is > 0: offset to those channels (for multi-device routing)
+       
+       For 4-channel devices like EVO4:
+       - offset=0: use physical channels 1/2
+       - offset=2: use physical channels 3/4
     */
-    int outputChannelOffset = 2;  /* FORCE: Always offset to channels 2/3 (physical 3/4) */
+    int outputChannelOffset = asioSpecificStreamInfo ? asioSpecificStreamInfo->outputChannelOffset : 0;
+    
+    /* Validate and adjust outputChannelOffset based on driver capabilities */
+    if( outputChannelOffset < 0 || outputChannelOffset >= (int)driverInfo->outputChannelCount )
+    {
+        /* Invalid offset, fall back to default (channels 1/2) */
+        outputChannelOffset = 0;
+    }
+    
     int totalAsioOutputChannels = outputChannelCount + outputChannelOffset;
     
     PA_DEBUG(("PaAsioOpenStream: ===== CHANNEL MAPPING DEBUG =====\n"));
-    PA_DEBUG(("PaAsioOpenStream: FORCED CHANNEL OFFSET = %d\n", outputChannelOffset));
     PA_DEBUG(("PaAsioOpenStream: User requested outputChannelCount = %d\n", outputChannelCount));
     PA_DEBUG(("PaAsioOpenStream: Device reports driverInfo->outputChannelCount = %ld\n", driverInfo->outputChannelCount));
-    PA_DEBUG(("PaAsioOpenStream: Would need %d channels total (offset %d + count %d)\n", 
-              totalAsioOutputChannels, outputChannelOffset, outputChannelCount));
-    
-    /* Validate that device has enough output channels for the offset mapping */
-    if( totalAsioOutputChannels > driverInfo->outputChannelCount )
-    {
-        PA_DEBUG(("PaAsioOpenStream: WARNING: Driver has fewer channels than needed!\n"));
-        PA_DEBUG(("PaAsioOpenStream: Driver channels: %ld, Required: %d\n",
-                  driverInfo->outputChannelCount, totalAsioOutputChannels));
-        /* Fall back to default mapping if not enough channels */
-        outputChannelOffset = 0;
-        totalAsioOutputChannels = outputChannelCount;
-        PA_DEBUG(("PaAsioOpenStream: FALLING BACK to default (channels 1/2)\n"));
-    }
-    else
-    {
-        PA_DEBUG(("PaAsioOpenStream: SUCCESS: Channel mapping ENABLED\n"));
-        PA_DEBUG(("PaAsioOpenStream: Audio will go to ASIO channels %d-%d (physical %d-%d)\n",
-                  outputChannelOffset, outputChannelOffset + outputChannelCount - 1,
-                  outputChannelOffset + 1, outputChannelOffset + outputChannelCount));
-    }
-    PA_DEBUG(("PaAsioOpenStream: Final outputChannelOffset = %d\n", outputChannelOffset));
-    PA_DEBUG(("PaAsioOpenStream: Final totalAsioOutputChannels = %d\n", totalAsioOutputChannels));
-    PA_DEBUG(("PaAsioOpenStream: =====================================\n"));
+    PA_DEBUG(("PaAsioOpenStream: Using outputChannelOffset = %d\n", outputChannelOffset));
+    PA_DEBUG(("PaAsioOpenStream: Total ASIO output buffers needed = %d\n", totalAsioOutputChannels));
+    PA_DEBUG(("PaAsioOpenStream: Audio will go to physical ASIO channels %d-%d\n",
+              outputChannelOffset + 1, outputChannelOffset + outputChannelCount));
     
     /* Store the output channel offset in the stream structure for use by other functions */
     stream->outputChannelOffset = outputChannelOffset;
@@ -2513,11 +2415,13 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
                 ? suggestedInputLatencyFrames
                 : suggestedOutputLatencyFrames);
 
-        // FIX: If user specified a small framesPerBuffer, use the ASIO driver's preferred size
-        // This matches what applications like WinUAE expect when they use qualitative buffer settings
-        if( framesPerBuffer != 0 && framesPerBuffer <= 512 )
+        // FIX: Always prefer ASIO driver's buffer size over PortAudio's latency calculation.
+        // The driver knows best what buffer size works for its hardware and timing.
+        // This prevents applications like WinUAE from experiencing timing mismatches
+        // when PortAudio would otherwise override with larger latency-based buffers.
+        if( driverInfo->bufferPreferredSize > 0 )
         {
-            // User explicitly requested a small buffer - use preferred size for compatibility
+            // Use driver's preferred size as the primary choice
             framesPerHostBuffer = driverInfo->bufferPreferredSize;
             
             // Validate it's within driver constraints
@@ -2528,7 +2432,7 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
         }
         else
         {
-            // Fall back to original latency-based selection for larger buffers
+            // Driver didn't provide a valid preferred size, use latency calculation
             framesPerHostBuffer = SelectHostBufferSize( targetBufferingLatencyFrames,
                     framesPerBuffer, driverInfo );
         }
