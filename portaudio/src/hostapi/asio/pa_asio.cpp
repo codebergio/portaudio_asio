@@ -1254,9 +1254,6 @@ PaError PaAsio_Initialize( PaUtilHostApiRepresentation **hostApi, PaHostApiIndex
     PaAsioHostApiRepresentation *asioHostApi;
     PaAsioDeviceInfo *deviceInfoArray;
     char **names;
-
-    PA_DEBUG("PaAsio_Initialize: Starting ASIO host API initialization\n");
-
     asioHostApi = (PaAsioHostApiRepresentation*)PaUtil_AllocateZeroInitializedMemory( sizeof(PaAsioHostApiRepresentation) );
     if( !asioHostApi )
     {
@@ -1479,8 +1476,6 @@ static void Terminate( struct PaUtilHostApiRepresentation *hostApi )
 {
     PaAsioHostApiRepresentation *asioHostApi = (PaAsioHostApiRepresentation*)hostApi;
 
-    PA_DEBUG("PaAsioHostApiRepresentation: Terminate called\n");
-
     /*
         IMPLEMENT ME:
             - clean up any resources not handled by the allocation group (need to review if there are any)
@@ -1498,6 +1493,9 @@ static void Terminate( struct PaUtilHostApiRepresentation *hostApi )
     PaWinUtil_CoUninitialize( paASIO, &asioHostApi->comInitializationResult );
 
     PaUtil_FreeMemory( asioHostApi );
+
+    /* Close debug log */
+    CloseDebugLog();
 }
 
 
@@ -1699,6 +1697,15 @@ typedef struct PaAsioStream
 
     long inputChannelCount, outputChannelCount;
     bool postOutput;
+    
+    /* Channel mapping for output channels to support non-contiguous channel activation.
+       Maps logical PortAudio output channel index to physical ASIO output channel index. */
+    int *outputChannelMap;
+    
+    /* Output channel offset for default channel mapping.
+       When > 0, indicates the starting ASIO channel number for output.
+       For example, offset of 2 means output goes to ASIO channels 2/3 (physical 3/4). */
+    int outputChannelOffset;
 
     void **bufferPtrs; /* this is carved up for inputBufferPtrs and outputBufferPtrs */
     void **inputBufferPtrs[2];
@@ -1732,13 +1739,29 @@ static PaAsioStream *theAsioStream = 0; /* due to ASIO sdk limitations there can
 
 static void ZeroOutputBuffers( PaAsioStream *stream, long index )
 {
-    for( int i=0; i < stream->outputChannelCount; ++i )
+    /* Zero out ALL output buffers, including dummy buffers.
+       
+       With outputChannelOffset=2, we have 4 ASIO output buffers (for channels 0, 1, 2, 3):
+       - Buffers 0, 1: DUMMY buffers → kept silent (prevent distortion on physical 1/2)
+       - Buffers 2, 3: ACTUAL audio buffers → will contain audio data
+       
+       Total output buffers = outputChannelOffset + outputChannelCount
+    */
+    int totalOutputBuffers = stream->outputChannelOffset + stream->outputChannelCount;
+    
+    PA_DEBUG(("ZeroOutputBuffers: index=%ld, offset=%d, count=%d, total=%d\n",
+              index, stream->outputChannelOffset, stream->outputChannelCount, totalOutputBuffers));
+    
+    for( int i=0; i < totalOutputBuffers; ++i )
     {
-        void *buffer = stream->asioBufferInfos[ i + stream->inputChannelCount ].buffers[index];
+        int asioBufferIndex = stream->inputChannelCount + i;
+        void *buffer = stream->asioBufferInfos[ asioBufferIndex ].buffers[index];
 
-        int bytesPerSample = BytesPerAsioSample( stream->asioChannelInfos[ i + stream->inputChannelCount ].type );
+        int bytesPerSample = BytesPerAsioSample( stream->asioChannelInfos[ asioBufferIndex ].type );
 
         memset( buffer, 0, stream->framesPerHostCallback * bytesPerSample );
+        
+        PA_DEBUG(("Zeroed buffer[%d][%d] at %p (%d bytes)\n", asioBufferIndex, index, buffer, stream->framesPerHostCallback * bytesPerSample));
     }
 }
 
@@ -2094,6 +2117,20 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
                            PaStreamCallback *streamCallback,
                            void *userData )
 {
+    /* CRITICAL DEBUG: Output debug message to confirm code is being reached */
+    DebugMsg("========== PortAudio ASIO OpenStream() ENTERED ==========\n");
+    DebugMsg("This message proves the MODIFIED pa_asio.cpp is being executed!\n");
+    DebugMsg("If you see this in DebugView, the DLL is being loaded correctly.\n");
+    DebugMsg("================================================================\n");
+    
+    /* Open debug log at start of OpenStream */
+    OpenDebugLog();
+    
+    PA_DEBUG_LOG("\n\n=== OpenStream Called ===\n");
+    PA_DEBUG_LOG("framesPerBuffer=%lu, sampleRate=%f\n", framesPerBuffer, sampleRate);
+    PA_DEBUG_LOG("inputParameters=%s, outputParameters=%s\n", 
+                 inputParameters ? "yes" : "no", outputParameters ? "yes" : "no");
+    
     PaError result = paNoError;
     PaAsioHostApiRepresentation *asioHostApi = (PaAsioHostApiRepresentation*)hostApi;
     PaAsioStream *stream = 0;
@@ -2112,8 +2149,6 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
     PaAsioDriverInfo *driverInfo;
     int *inputChannelSelectors = 0;
     int *outputChannelSelectors = 0;
-
-    PA_DEBUG("PaAsio_OpenStream: Opening ASIO stream\n");
 
     /* Are we using blocking i/o interface? */
     int usingBlockingIo = ( !streamCallback ) ? TRUE : FALSE;
@@ -2305,8 +2340,73 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
     PaUtil_InitializeCpuLoadMeasurer( &stream->cpuLoadMeasurer, sampleRate );
 
 
+    /* CHANNEL MAPPING: This code maps PortAudio output channels to ASIO output channels starting
+       from channel 2 (physical 3/4) instead of the default channel 0 (physical 1/2).
+       
+       THE CORRECT APPROACH FOR DRIVERS THAT IGNORE channelNum:
+       
+       Many ASIO drivers (especially those wrapping DirectSound/WASAPI like ASIO4ALL) ignore
+       the channelNum field and use array index instead. For these drivers, we MUST allocate
+       ALL channels from 0 up to the target channel.
+       
+       Strategy:
+       1. Allocate buffers for ALL output channels from 0 to (outputChannelOffset + outputChannelCount - 1)
+       2. Set channelNum to the actual channel number (0, 1, 2, 3 for 4-channel output)
+       3. Only write audio to the buffers corresponding to the offset channels
+       4. Keep dummy buffers silent (zero them out)
+       
+       Array layout (outputChannelOffset=2, outputChannelCount=2):
+       ┌─────────────────────────────────────────────────────────────┐
+       │ Buffer Index:    0       1       2       3                  │
+       │ channelNum:      0       1       2       3                  │
+       │ Physical:        1       2       3       4                  │
+       │ Content:      SILENT  SILENT    AUDIO   AUDIO               │
+       └─────────────────────────────────────────────────────────────┘
+       
+       This works regardless of whether the driver honors channelNum:
+       - If driver honors channelNum: buffers 2/3 map to physical 3/4 ✓
+       - If driver ignores channelNum: array index 2/3 maps to physical 3/4 ✓
+       
+       DEBUG: Force channel offset to always be 2 for testing
+    */
+    int outputChannelOffset = 2;  /* FORCE: Always offset to channels 2/3 (physical 3/4) */
+    int totalAsioOutputChannels = outputChannelCount + outputChannelOffset;
+    
+    PA_DEBUG(("PaAsioOpenStream: ===== CHANNEL MAPPING DEBUG =====\n"));
+    PA_DEBUG(("PaAsioOpenStream: FORCED CHANNEL OFFSET = %d\n", outputChannelOffset));
+    PA_DEBUG(("PaAsioOpenStream: User requested outputChannelCount = %d\n", outputChannelCount));
+    PA_DEBUG(("PaAsioOpenStream: Device reports driverInfo->outputChannelCount = %ld\n", driverInfo->outputChannelCount));
+    PA_DEBUG(("PaAsioOpenStream: Would need %d channels total (offset %d + count %d)\n", 
+              totalAsioOutputChannels, outputChannelOffset, outputChannelCount));
+    
+    /* Validate that device has enough output channels for the offset mapping */
+    if( totalAsioOutputChannels > driverInfo->outputChannelCount )
+    {
+        PA_DEBUG(("PaAsioOpenStream: WARNING: Driver has fewer channels than needed!\n"));
+        PA_DEBUG(("PaAsioOpenStream: Driver channels: %ld, Required: %d\n",
+                  driverInfo->outputChannelCount, totalAsioOutputChannels));
+        /* Fall back to default mapping if not enough channels */
+        outputChannelOffset = 0;
+        totalAsioOutputChannels = outputChannelCount;
+        PA_DEBUG(("PaAsioOpenStream: FALLING BACK to default (channels 1/2)\n"));
+    }
+    else
+    {
+        PA_DEBUG(("PaAsioOpenStream: SUCCESS: Channel mapping ENABLED\n"));
+        PA_DEBUG(("PaAsioOpenStream: Audio will go to ASIO channels %d-%d (physical %d-%d)\n",
+                  outputChannelOffset, outputChannelOffset + outputChannelCount - 1,
+                  outputChannelOffset + 1, outputChannelOffset + outputChannelCount));
+    }
+    PA_DEBUG(("PaAsioOpenStream: Final outputChannelOffset = %d\n", outputChannelOffset));
+    PA_DEBUG(("PaAsioOpenStream: Final totalAsioOutputChannels = %d\n", totalAsioOutputChannels));
+    PA_DEBUG(("PaAsioOpenStream: =====================================\n"));
+    
+    /* Store the output channel offset in the stream structure for use by other functions */
+    stream->outputChannelOffset = outputChannelOffset;
+    
+    /* Allocate buffer infos for ALL channels (inputs + all outputs up to target) */
     stream->asioBufferInfos = (ASIOBufferInfo*)PaUtil_AllocateZeroInitializedMemory(
-            sizeof(ASIOBufferInfo) * (inputChannelCount + outputChannelCount) );
+            sizeof(ASIOBufferInfo) * (inputChannelCount + totalAsioOutputChannels) );
     if( !stream->asioBufferInfos )
     {
         result = paInsufficientMemory;
@@ -2314,6 +2414,15 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
         goto error;
     }
 
+    /* Allocate channel mapping array for output channels (initialized to 0 = no mapping) */
+    stream->outputChannelMap = (int*)PaUtil_AllocateZeroInitializedMemory(
+            sizeof(int) * outputChannelCount );
+    if( outputChannelCount > 0 && !stream->outputChannelMap )
+    {
+        result = paInsufficientMemory;
+        PA_DEBUG(("OpenStream ERROR7b\n"));
+        goto error;
+    }
 
     for( int i=0; i < inputChannelCount; ++i )
     {
@@ -2332,20 +2441,32 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
         info->buffers[0] = info->buffers[1] = 0;
     }
 
-    for( int i=0; i < outputChannelCount; ++i ){
-        ASIOBufferInfo *info = &stream->asioBufferInfos[inputChannelCount+i];
-
+    /* Initialize ALL output ASIOBufferInfo structures, including dummy channels.
+       This is critical because ASIOCreateBuffers expects all buffer infos to be properly initialized.
+       
+       For outputChannelCount=2 and outputChannelOffset=2 (totalAsioOutputChannels=4):
+       - Buffer 0: channelNum = 0 → physical channel 1 (DUMMY - kept silent)
+       - Buffer 1: channelNum = 1 → physical channel 2 (DUMMY - kept silent)
+       - Buffer 2: channelNum = 2 → physical channel 3 (ACTUAL AUDIO)
+       - Buffer 3: channelNum = 3 → physical channel 4 (ACTUAL AUDIO)
+    */
+    for( int i=0; i < totalAsioOutputChannels; ++i )
+    {
+        ASIOBufferInfo *info = &stream->asioBufferInfos[inputChannelCount + i];
         info->isInput = ASIOFalse;
-
-        if( outputChannelSelectors ){
-            // outputChannelSelectors values have already been validated in
-            // ValidateAsioSpecificStreamInfo() above
-            info->channelNum = outputChannelSelectors[i];
-        }else{
-            info->channelNum = i;
-        }
-
+        /* Set channelNum to the actual ASIO channel number.
+           This is the array index, which some drivers use instead of channelNum field. */
+        info->channelNum = i;
         info->buffers[0] = info->buffers[1] = 0;
+        
+        if( i < outputChannelOffset )
+        {
+            PA_DEBUG(("Output buffer %d: channelNum = %d (DUMMY - will be silenced)\n", i, info->channelNum));
+        }
+        else
+        {
+            PA_DEBUG(("Output buffer %d: channelNum = %d (ACTUAL AUDIO)\n", i, info->channelNum));
+        }
     }
 
 
@@ -2386,9 +2507,11 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
 
 
     PA_DEBUG(("PaAsioOpenStream: framesPerHostBuffer :%d\n",  framesPerHostBuffer));
+    PA_DEBUG(("PaAsioOpenStream: Creating buffers for %d input + %d output channels\n", 
+              inputChannelCount, totalAsioOutputChannels));
 
     asioError = ASIOCreateBuffers( stream->asioBufferInfos,
-            inputChannelCount+outputChannelCount,
+            inputChannelCount + totalAsioOutputChannels,
             framesPerHostBuffer, &asioCallbacks_ );
 
     if( asioError != ASE_OK
@@ -2407,7 +2530,7 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
         PA_DEBUG(("PaAsioOpenStream: CORRECTED framesPerHostBuffer :%d\n",  framesPerHostBuffer));
 
         ASIOError asioError2 = ASIOCreateBuffers( stream->asioBufferInfos,
-                inputChannelCount+outputChannelCount,
+                inputChannelCount + totalAsioOutputChannels,
                  framesPerHostBuffer, &asioCallbacks_ );
         if( asioError2 == ASE_OK )
             asioError = ASE_OK;
@@ -2423,8 +2546,9 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
 
     asioBuffersCreated = 1;
 
+    /* Allocate ASIOChannelInfo array for all created buffers */
     stream->asioChannelInfos = (ASIOChannelInfo*)PaUtil_AllocateZeroInitializedMemory(
-            sizeof(ASIOChannelInfo) * (inputChannelCount + outputChannelCount) );
+            sizeof(ASIOChannelInfo) * (inputChannelCount + totalAsioOutputChannels) );
     if( !stream->asioChannelInfos )
     {
         result = paInsufficientMemory;
@@ -2432,7 +2556,8 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
         goto error;
     }
 
-    for( int i=0; i < inputChannelCount + outputChannelCount; ++i )
+    /* Get channel info for all created ASIO buffers */
+    for( int i=0; i < inputChannelCount + totalAsioOutputChannels; ++i )
     {
         stream->asioChannelInfos[i].channel = stream->asioBufferInfos[i].channelNum;
         stream->asioChannelInfos[i].isInput = stream->asioBufferInfos[i].isInput;
@@ -2447,7 +2572,7 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
     }
 
     stream->bufferPtrs = (void**)PaUtil_AllocateZeroInitializedMemory(
-            2 * sizeof(void*) * (inputChannelCount + outputChannelCount) );
+            2 * sizeof(void*) * (inputChannelCount + totalAsioOutputChannels) );
     if( !stream->bufferPtrs )
     {
         result = paInsufficientMemory;
@@ -2474,19 +2599,51 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
 
     if( outputChannelCount > 0 )
     {
-        stream->outputBufferPtrs[0] = &stream->bufferPtrs[inputChannelCount*2];
-        stream->outputBufferPtrs[1] = &stream->bufferPtrs[inputChannelCount*2 + outputChannelCount];
+        /* Set up outputBufferPtrs to point to the ACTUAL audio buffers.
+           The audio buffers start at index outputChannelOffset in the ASIO output buffers.
+           We map bufferPtrs so that outputBufferPtrs[0] points to ASIO output channel outputChannelOffset.
+           
+           Array layout (inputChannelCount=0, outputChannelOffset=2, outputChannelCount=2, totalAsioOutputChannels=4):
+           bufferPtrs indices:    0    1    2    3    4    5    6    7
+           Corresponding to:    [buf0][buf1][buf2][buf3][buf0][buf1][buf2][buf3]  (double buffers)
+           ASIO output channels:    0    1    2    3
+           Purpose:              DUMMY DUMMY AUDIO AUDIO
+           
+           We want outputBufferPtrs[0] to point to bufferPtrs[2] (ASIO channel 2)
+           And outputBufferPtrs[1] to point to bufferPtrs[6] (ASIO channel 2, buffer 1)
+        */
+        int outputBufferOffset = inputChannelCount * 2 + outputChannelOffset;
+        stream->outputBufferPtrs[0] = &stream->bufferPtrs[outputBufferOffset];
+        stream->outputBufferPtrs[1] = &stream->bufferPtrs[outputBufferOffset + totalAsioOutputChannels];
 
+        /* Set up channel mapping for each logical PortAudio output channel.
+           We map PA channel 0 → ASIO buffer at index outputChannelOffset (channelNum=2)
+           We map PA channel 1 → ASIO buffer at index outputChannelOffset+1 (channelNum=3) */
         for( int i=0; i<outputChannelCount; ++i )
         {
-            stream->outputBufferPtrs[0][i] = stream->asioBufferInfos[inputChannelCount+i].buffers[0];
-            stream->outputBufferPtrs[1][i] = stream->asioBufferInfos[inputChannelCount+i].buffers[1];
+            /* The ASIO buffer index where audio data will be written */
+            int asioBufferIndex = inputChannelCount + outputChannelOffset + i;
+            
+            /* Store the mapping (which physical ASIO channel this PA output maps to) */
+            stream->outputChannelMap[i] = outputChannelOffset + i;  /* e.g., 2, 3 */
+            
+            /* Point the output buffer pointer to the correct ASIO buffer */
+            stream->outputBufferPtrs[0][i] = stream->asioBufferInfos[asioBufferIndex].buffers[0];
+            stream->outputBufferPtrs[1][i] = stream->asioBufferInfos[asioBufferIndex].buffers[1];
+            
+            PA_DEBUG(("Mapping PA output %d → ASIO buffer[%d] channelNum=%d (physical %d)\n",
+                      i, asioBufferIndex, outputChannelOffset + i, outputChannelOffset + i + 1));
         }
     }
     else
     {
         stream->outputBufferPtrs[0] = 0;
         stream->outputBufferPtrs[1] = 0;
+        if( stream->outputChannelMap )
+        {
+            PaUtil_FreeMemory( stream->outputChannelMap );
+            stream->outputChannelMap = 0;
+        }
     }
 
     if( inputChannelCount > 0 )
@@ -2517,9 +2674,14 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
             see: "ASIO devices with multiple sample formats are unsupported"
             http://www.portaudio.com/trac/ticket/106
         */
-        ASIOSampleType outputType = stream->asioChannelInfos[inputChannelCount].type;
+        /* Get sample type from the FIRST ACTUAL output channel we're using.
+           When using channel offset, we need to skip dummy channels (0,1) and
+           get the type from channel 2 (physical 3). */
+        int firstOutputAsioIndex = inputChannelCount + outputChannelOffset;
+        ASIOSampleType outputType = stream->asioChannelInfos[firstOutputAsioIndex].type;
 
-        PA_DEBUG(("ASIO Output type:%d",outputType));
+        PA_DEBUG(("ASIO Output type:%d (from ASIO channel %d, physical output %d)\n",
+                  outputType, outputChannelOffset, outputChannelOffset + 1));
         AsioSampleTypeLOG(outputType);
         hostOutputSampleFormat = AsioSampleTypeToPaNativeSampleFormat( outputType );
 
@@ -2908,8 +3070,6 @@ static PaError CloseStream( PaStream* s )
 {
     PaError result = paNoError;
     PaAsioStream *stream = (PaAsioStream*)s;
-
-    PA_DEBUG("PaAsio_CloseStream: Closing ASIO stream\n");
 
     /*
         IMPLEMENT ME:
@@ -3381,10 +3541,11 @@ static PaError StartStream( PaStream *s )
     PaAsioStreamBlockingState *blockingState = stream->blockingState;
     ASIOError asioError;
 
-    PA_DEBUG("PaAsio_StartStream: Starting ASIO stream\n");
-
     if( stream->outputChannelCount > 0 )
     {
+        PA_DEBUG(("StartStream: Zeroing output buffers, offset=%d, count=%d, total=%d\n",
+                  stream->outputChannelOffset, stream->outputChannelCount,
+                  stream->outputChannelOffset + stream->outputChannelCount));
         ZeroOutputBuffers( stream, 0 );
         ZeroOutputBuffers( stream, 1 );
     }
@@ -3498,8 +3659,6 @@ static PaError StopStream( PaStream *s )
     PaAsioStream *stream = (PaAsioStream*)s;
     PaAsioStreamBlockingState *blockingState = stream->blockingState;
     ASIOError asioError;
-
-    PA_DEBUG("PaAsio_StopStream: Stopping ASIO stream\n");
 
     if( stream->isActive )
     {
