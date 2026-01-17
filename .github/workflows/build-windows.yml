@@ -43,12 +43,12 @@ jobs:
           exit 1
         }
         
-        # Check for commented debug lines
-        $debugCommentFound = Select-String -Path "portaudio/src/hostapi/asio/pa_asio.cpp" -Pattern "// DEBUG: Commented out to avoid file I/O"
-        if ($debugCommentFound) {
-          Write-Host "✓ Debug optimization comments found"
+        # Check for simplified ZeroOutputBuffers
+        $zeroBuffersFound = Select-String -Path "portaudio/src/hostapi/asio/pa_asio.cpp" -Pattern "Use the outputChannelOffset to access the correct ASIO buffer"
+        if ($zeroBuffersFound) {
+          Write-Host "✓ Simplified ZeroOutputBuffers found"
         } else {
-          Write-Host "✗ Debug optimization comments NOT found!"
+          Write-Host "✗ Simplified ZeroOutputBuffers NOT found!"
           exit 1
         }
         
@@ -170,13 +170,13 @@ jobs:
           $dllSize = (Get-Item "artifacts/portaudio_x64.dll").Length
           Write-Host "Final DLL size: $dllSize bytes"
           
-          # Check if DLL contains our debug strings
+          # Check if DLL contains our channel offset code
           $strings = & strings.exe "artifacts/portaudio_x64.dll" 2>$null
-          $hasDebugString = $strings | Select-String -Pattern "portaudio_asio_debug" -Quiet
-          if ($hasDebugString) {
-            Write-Host "✓ DLL contains debug signature 'portaudio_asio_debug'"
+          $hasChannelOffset = $strings | Select-String -Pattern "outputChannelOffset" -Quiet
+          if ($hasChannelOffset) {
+            Write-Host "✓ DLL contains channel offset code"
           } else {
-            Write-Host "✗ DLL does NOT contain debug signature!"
+            Write-Host "✗ DLL does NOT contain channel offset code!"
             exit 1
           }
         } else {
