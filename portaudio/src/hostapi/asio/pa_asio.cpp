@@ -1254,6 +1254,9 @@ PaError PaAsio_Initialize( PaUtilHostApiRepresentation **hostApi, PaHostApiIndex
     PaAsioHostApiRepresentation *asioHostApi;
     PaAsioDeviceInfo *deviceInfoArray;
     char **names;
+
+    PA_DEBUG("PaAsio_Initialize: Starting ASIO host API initialization\n");
+
     asioHostApi = (PaAsioHostApiRepresentation*)PaUtil_AllocateZeroInitializedMemory( sizeof(PaAsioHostApiRepresentation) );
     if( !asioHostApi )
     {
