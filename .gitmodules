@@ -1,6 +1,6 @@
 [submodule "portaudio"]
 	path = portaudio
-	url = https://github.com/codebergio/portaudio.git
+	url = https://codeberg.org/codebergio/portaudio.git
 [submodule "asio"]
 	path = asio
 	url = https://github.com/audiosdk/asio.git
