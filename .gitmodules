@@ -1,6 +1,0 @@
-[submodule "portaudio"]
-	path = portaudio
-	url = https://github.com/PortAudio/portaudio.git
-[submodule "asio"]
-	path = asio
-	url = https://github.com/audiosdk/asio.git
