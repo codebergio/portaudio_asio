@@ -1741,31 +1741,42 @@ static PaAsioStream *theAsioStream = 0; /* due to ASIO sdk limitations there can
 
 static void ZeroOutputBuffers( PaAsioStream *stream, long index )
 {
-    /* Zero out ALL output buffers, including dummy buffers.
+    /* Zero out output buffers.
        
-       With outputChannelOffset=2, we have 4 ASIO output buffers (for channels 0, 1, 2, 3):
-       - Buffers 0, 1: DUMMY buffers → kept silent (prevent distortion on physical 1/2)
-       - Buffers 2, 3: ACTUAL audio buffers → will contain audio data
+       With outputChannelOffset=2, we have 4 ASIO output buffers (channels 0, 1, 2, 3):
+       - Buffers 0, 1: DUMMY buffers → always zero to keep silent
+       - Buffers 2, 3: ACTUAL audio buffers → zero only at stream start
        
-       Total output buffers = outputChannelOffset + outputChannelCount
+       At stream start: zero ALL buffers to ensure clean start
+       During callbacks: zero ONLY dummy buffers (preserve audio data)
     */
-    int totalOutputBuffers = stream->outputChannelOffset + stream->outputChannelCount;
     
-    // DEBUG: Commented out to avoid file I/O on every audio callback (causes dropouts)
-    // PA_DEBUG(("ZeroOutputBuffers: index=%ld, offset=%d, count=%d, total=%d\n",
-    //           index, stream->outputChannelOffset, stream->outputChannelCount, totalOutputBuffers));
+    // At stream start (before playback begins), zero ALL buffers including audio channels
+    // During callbacks (when zeroOutput is true), only zero dummy buffers
+    int dummyBufferCount = stream->outputChannelOffset;
     
-    for( int i=0; i < totalOutputBuffers; ++i )
+    if( !stream->zeroOutput )
     {
-        int asioBufferIndex = stream->inputChannelCount + i;
-        void *buffer = stream->asioBufferInfos[ asioBufferIndex ].buffers[index];
-
-        int bytesPerSample = BytesPerAsioSample( stream->asioChannelInfos[ asioBufferIndex ].type );
-
-        memset( buffer, 0, stream->framesPerHostCallback * bytesPerSample );
-        
-        // DEBUG: Commented out to avoid file I/O on every audio callback (causes dropouts)
-        // PA_DEBUG(("Zeroed buffer[%d][%d] at %p (%d bytes)\n", asioBufferIndex, index, buffer, stream->framesPerHostCallback * bytesPerSample));
+        // Stream start: zero ALL output buffers (including audio channels 2-3)
+        int totalOutputBuffers = stream->outputChannelOffset + stream->outputChannelCount;
+        for( int i=0; i < totalOutputBuffers; ++i )
+        {
+            int asioBufferIndex = stream->inputChannelCount + i;
+            void *buffer = stream->asioBufferInfos[ asioBufferIndex ].buffers[index];
+            int bytesPerSample = BytesPerAsioSample( stream->asioChannelInfos[ asioBufferIndex ].type );
+            memset( buffer, 0, stream->framesPerHostCallback * bytesPerSample );
+        }
+    }
+    else
+    {
+        // During callbacks with zeroOutput=true: zero ONLY dummy buffers
+        for( int i=0; i < dummyBufferCount; ++i )
+        {
+            int asioBufferIndex = stream->inputChannelCount + i;
+            void *buffer = stream->asioBufferInfos[ asioBufferIndex ].buffers[index];
+            int bytesPerSample = BytesPerAsioSample( stream->asioChannelInfos[ asioBufferIndex ].type );
+            memset( buffer, 0, stream->framesPerHostCallback * bytesPerSample );
+        }
     }
 }
 
