@@ -195,13 +195,14 @@ static void WriteDebugLog(const char *fmt, ...)
     }
 }
 
-/* Override PA_DEBUG to use OutputDebugString instead of file logging */
+/* Override PA_DEBUG to use OutputDebugString + file logging */
+/* Note: PA_DEBUG is used as PA_DEBUG(("format", args)) with double parentheses */
 #ifdef PA_DEBUG
 #undef PA_DEBUG
 #endif
-#define PA_DEBUG DebugMsg
+#define PA_DEBUG(fmt_and_args) DebugMsg fmt_and_args
 
-#define PA_DEBUG_LOG DebugMsg
+#define PA_DEBUG_LOG(fmt_and_args) DebugMsg fmt_and_args
 #ifndef WIN32
 #define WIN32
 #endif
@@ -1254,9 +1255,6 @@ PaError PaAsio_Initialize( PaUtilHostApiRepresentation **hostApi, PaHostApiIndex
     PaAsioHostApiRepresentation *asioHostApi;
     PaAsioDeviceInfo *deviceInfoArray;
     char **names;
-
-    PA_DEBUG("PaAsio_Initialize: Starting ASIO host API initialization\n");
-
     asioHostApi = (PaAsioHostApiRepresentation*)PaUtil_AllocateZeroInitializedMemory( sizeof(PaAsioHostApiRepresentation) );
     if( !asioHostApi )
     {
