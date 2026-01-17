@@ -36,7 +36,7 @@ jobs:
         $debugStrings = @(
           "portaudio_asio_debug.txt",
           "PortAudio ASIO DLL LOADED",
-          "PaAsio_Initialize: Starting ASIO host API initialization"
+          "PaAsio_Initialize: drv:"
         )
         
         foreach ($str in $debugStrings) {
