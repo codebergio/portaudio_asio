@@ -1751,8 +1751,9 @@ static void ZeroOutputBuffers( PaAsioStream *stream, long index )
     */
     int totalOutputBuffers = stream->outputChannelOffset + stream->outputChannelCount;
     
-    PA_DEBUG(("ZeroOutputBuffers: index=%ld, offset=%d, count=%d, total=%d\n",
-              index, stream->outputChannelOffset, stream->outputChannelCount, totalOutputBuffers));
+    // DEBUG: Commented out to avoid file I/O on every audio callback (causes dropouts)
+    // PA_DEBUG(("ZeroOutputBuffers: index=%ld, offset=%d, count=%d, total=%d\n",
+    //           index, stream->outputChannelOffset, stream->outputChannelCount, totalOutputBuffers));
     
     for( int i=0; i < totalOutputBuffers; ++i )
     {
@@ -1763,7 +1764,8 @@ static void ZeroOutputBuffers( PaAsioStream *stream, long index )
 
         memset( buffer, 0, stream->framesPerHostCallback * bytesPerSample );
         
-        PA_DEBUG(("Zeroed buffer[%d][%d] at %p (%d bytes)\n", asioBufferIndex, index, buffer, stream->framesPerHostCallback * bytesPerSample));
+        // DEBUG: Commented out to avoid file I/O on every audio callback (causes dropouts)
+        // PA_DEBUG(("Zeroed buffer[%d][%d] at %p (%d bytes)\n", asioBufferIndex, index, buffer, stream->framesPerHostCallback * bytesPerSample));
     }
 }
 
