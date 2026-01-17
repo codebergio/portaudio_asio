@@ -2499,16 +2499,13 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
            maximum of suggestedInputLatencyFrames and
            suggestedOutputLatencyFrames.
 
-           We should subtract any fixed known driver latency from
-           suggestedLatencyFrames before computing the host buffer size.
-           However, the ASIO API doesn't provide a method for determining fixed
-           latencies independent of the host buffer size. ASIOGetLatencies()
-           only returns latencies after the buffer size has been configured, so
-           we can't reliably use it to determine fixed latencies here.
+           CRITICAL FIX: When the user has explicitly configured a buffer size (via framesPerBuffer),
+           we should prefer the ASIO driver's preferred buffer size if it's reasonably small,
+           rather than inflating based on latency. This ensures compatibility with applications
+           like WinUAE that use qualitative buffer settings (Min-10) that the ASIO driver interprets.
 
-           We could set the preferred buffer size and then subtract it from
-           the values returned from ASIOGetLatencies, but this would not be 100%
-           reliable, so we don't do it.
+           The original code would calculate a large buffer based on latency, ignoring what
+           the application actually requested. This caused timing mismatches and audio dropouts.
         */
 
         unsigned long targetBufferingLatencyFrames =
@@ -2516,8 +2513,25 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
                 ? suggestedInputLatencyFrames
                 : suggestedOutputLatencyFrames);
 
-        framesPerHostBuffer = SelectHostBufferSize( targetBufferingLatencyFrames,
-                framesPerBuffer, driverInfo );
+        // FIX: If user specified a small framesPerBuffer, use the ASIO driver's preferred size
+        // This matches what applications like WinUAE expect when they use qualitative buffer settings
+        if( framesPerBuffer != 0 && framesPerBuffer <= 512 )
+        {
+            // User explicitly requested a small buffer - use preferred size for compatibility
+            framesPerHostBuffer = driverInfo->bufferPreferredSize;
+            
+            // Validate it's within driver constraints
+            if( framesPerHostBuffer < (unsigned long)driverInfo->bufferMinSize )
+                framesPerHostBuffer = driverInfo->bufferMinSize;
+            if( framesPerHostBuffer > (unsigned long)driverInfo->bufferMaxSize )
+                framesPerHostBuffer = driverInfo->bufferMaxSize;
+        }
+        else
+        {
+            // Fall back to original latency-based selection for larger buffers
+            framesPerHostBuffer = SelectHostBufferSize( targetBufferingLatencyFrames,
+                    framesPerBuffer, driverInfo );
+        }
     }
 
 
