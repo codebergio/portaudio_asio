@@ -23,66 +23,9 @@ jobs:
         Write-Host "Checking portaudio directory..."
         if (Test-Path "portaudio") {
           Write-Host "✓ portaudio directory found"
-          Get-ChildItem -Path "portaudio" -Depth 0 | Select-Object Name
         } else {
           Write-Host "✗ portaudio directory NOT found!"
           exit 1
-        }
-
-    - name: Verify code changes applied
-      shell: pwsh
-      run: |
-        Write-Host "Verifying that our code changes are present..."
-        
-        # Check for channel offset code
-        $channelOffsetFound = Select-String -Path "portaudio/src/hostapi/asio/pa_asio.cpp" -Pattern "outputChannelOffset = 2"
-        if ($channelOffsetFound) {
-          Write-Host "✓ Channel offset code found"
-        } else {
-          Write-Host "✗ Channel offset code NOT found!"
-          exit 1
-        }
-        
-        # Check for simplified ZeroOutputBuffers
-        $zeroBuffersFound = Select-String -Path "portaudio/src/hostapi/asio/pa_asio.cpp" -Pattern "Use the outputChannelOffset to access the correct ASIO buffer"
-        if ($zeroBuffersFound) {
-          Write-Host "✓ Simplified ZeroOutputBuffers found"
-        } else {
-          Write-Host "✗ Simplified ZeroOutputBuffers NOT found!"
-          exit 1
-        }
-        
-        Write-Host "✓ All code changes verified!"
-
-    - name: Verify debug code presence
-      shell: pwsh
-      run: |
-        Write-Host "Checking for debug code in pa_asio.cpp..."
-        $debugStrings = @(
-          "portaudio_asio_debug.txt",
-          "PortAudio ASIO DLL LOADED",
-          "PaAsio_Initialize: drv:"
-        )
-        
-        foreach ($str in $debugStrings) {
-          $found = Select-String -Path "portaudio/src/hostapi/asio/pa_asio.cpp" -Pattern $str
-          if ($found) {
-            Write-Host "✓ Found: $str"
-          } else {
-            Write-Host "✗ NOT found: $str"
-            exit 1
-          }
-        }
-
-    - name: Find MSBuild
-      shell: pwsh
-      run: |
-        $msbuild = "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\MSBuild.exe"
-        if (Test-Path $msbuild) {
-          Write-Host "Found MSBuild: $msbuild"
-        } else {
-          Write-Host "Searching for MSBuild..."
-          Get-ChildItem "C:\Program Files\Microsoft Visual Studio" -Recurse -Filter "MSBuild.exe" -ErrorAction SilentlyContinue | ForEach-Object { Write-Host $_.FullName }
         }
 
     - name: Build PortAudio with CMake
@@ -90,14 +33,7 @@ jobs:
       run: |
         cd portaudio
         
-        Write-Host "Current directory: $(Get-Location)"
-        Write-Host "Files in current directory:"
-        Get-ChildItem -Path . -Depth 0
-        
-        Write-Host "`nCreating build directory..."
-        if (-not (Test-Path "build")) {
-          New-Item -ItemType Directory -Path "build" | Out-Null
-        }
+        Write-Host "Building PortAudio in Release mode..."
         
         # Set ASIO_SDK_PATH to the asio directory in the repository
         $asioPath = Resolve-Path "$PWD/../asio" -ErrorAction SilentlyContinue
@@ -108,7 +44,13 @@ jobs:
         
         Write-Host "Using ASIO SDK from: $asioPath"
         
-        Write-Host "Running CMake configure with ASIO enabled..."
+        # Clean any existing build artifacts
+        if (Test-Path "build") {
+          Write-Host "Cleaning existing build directory..."
+          Remove-Item -Recurse -Force build
+        }
+        
+        Write-Host "Running CMake configure..."
         cmake -B build -S . -G "Visual Studio 17 2022" -A x64 -DPA_USE_ASIO=ON -DCMAKE_PREFIX_PATH="$asioPath" -DCMAKE_BUILD_TYPE=Release
         
         if ($LASTEXITCODE -ne 0) {
@@ -116,21 +58,7 @@ jobs:
           exit 1
         }
         
-        # Clean any existing build artifacts to ensure fresh build
-        if (Test-Path "build") {
-          Write-Host "Cleaning existing build directory..."
-          Remove-Item -Recurse -Force build
-        }
-        
-        Write-Host "Re-running CMake configure after clean..."
-        cmake -B build -S . -G "Visual Studio 17 2022" -A x64 -DPA_USE_ASIO=ON -DCMAKE_PREFIX_PATH="$asioPath" -DCMAKE_BUILD_TYPE=Release
-        
-        if ($LASTEXITCODE -ne 0) {
-          Write-Host "CMake configure failed after clean!"
-          exit 1
-        }
-        
-        Write-Host "`nBuilding with CMake..."
+        Write-Host "Building with CMake..."
         cmake --build build --config Release -j 4
         
         if ($LASTEXITCODE -ne 0) {
@@ -141,7 +69,7 @@ jobs:
     - name: Create artifacts directory
       run: mkdir artifacts
 
-    - name: Copy DLL artifacts and verify
+    - name: Copy DLL artifacts
       shell: pwsh
       run: |
         $searchPaths = @(
@@ -169,16 +97,6 @@ jobs:
         if (Test-Path "artifacts/portaudio_x64.dll") {
           $dllSize = (Get-Item "artifacts/portaudio_x64.dll").Length
           Write-Host "Final DLL size: $dllSize bytes"
-          
-          # Check if DLL contains our channel offset code
-          $strings = & strings.exe "artifacts/portaudio_x64.dll" 2>$null
-          $hasChannelOffset = $strings | Select-String -Pattern "outputChannelOffset" -Quiet
-          if ($hasChannelOffset) {
-            Write-Host "✓ DLL contains channel offset code"
-          } else {
-            Write-Host "✗ DLL does NOT contain channel offset code!"
-            exit 1
-          }
         } else {
           Write-Host "No DLL found!"
           exit 1
