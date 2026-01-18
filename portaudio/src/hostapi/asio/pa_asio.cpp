@@ -371,25 +371,25 @@ static PaSampleFormat AsioSampleTypeToPaNativeSampleFormat(ASIOSampleType type)
 void AsioSampleTypeLOG(ASIOSampleType type)
 {
     switch (type) {
-        case ASIOSTInt16MSB:  PA_DEBUG(("ASIOSTInt16MSB\n"));  break;
-        case ASIOSTInt16LSB:  PA_DEBUG(("ASIOSTInt16LSB\n"));  break;
-        case ASIOSTFloat32MSB:PA_DEBUG(("ASIOSTFloat32MSB\n"));break;
-        case ASIOSTFloat32LSB:PA_DEBUG(("ASIOSTFloat32LSB\n"));break;
-        case ASIOSTFloat64MSB:PA_DEBUG(("ASIOSTFloat64MSB\n"));break;
-        case ASIOSTFloat64LSB:PA_DEBUG(("ASIOSTFloat64LSB\n"));break;
-        case ASIOSTInt32MSB:  PA_DEBUG(("ASIOSTInt32MSB\n"));  break;
-        case ASIOSTInt32LSB:  PA_DEBUG(("ASIOSTInt32LSB\n"));  break;
-        case ASIOSTInt32MSB16:PA_DEBUG(("ASIOSTInt32MSB16\n"));break;
-        case ASIOSTInt32LSB16:PA_DEBUG(("ASIOSTInt32LSB16\n"));break;
-        case ASIOSTInt32MSB18:PA_DEBUG(("ASIOSTInt32MSB18\n"));break;
-        case ASIOSTInt32MSB20:PA_DEBUG(("ASIOSTInt32MSB20\n"));break;
-        case ASIOSTInt32MSB24:PA_DEBUG(("ASIOSTInt32MSB24\n"));break;
-        case ASIOSTInt32LSB18:PA_DEBUG(("ASIOSTInt32LSB18\n"));break;
-        case ASIOSTInt32LSB20:PA_DEBUG(("ASIOSTInt32LSB20\n"));break;
-        case ASIOSTInt32LSB24:PA_DEBUG(("ASIOSTInt32LSB24\n"));break;
-        case ASIOSTInt24MSB:  PA_DEBUG(("ASIOSTInt24MSB\n"));  break;
-        case ASIOSTInt24LSB:  PA_DEBUG(("ASIOSTInt24LSB\n"));  break;
-        default:              PA_DEBUG(("Custom Format%d\n",type));break;
+        case ASIOSTInt16MSB:    break;
+        case ASIOSTInt16LSB:    break;
+        case ASIOSTFloat32MSB:break;
+        case ASIOSTFloat32LSB:break;
+        case ASIOSTFloat64MSB:break;
+        case ASIOSTFloat64LSB:break;
+        case ASIOSTInt32MSB:    break;
+        case ASIOSTInt32LSB:    break;
+        case ASIOSTInt32MSB16:break;
+        case ASIOSTInt32LSB16:break;
+        case ASIOSTInt32MSB18:break;
+        case ASIOSTInt32MSB20:break;
+        case ASIOSTInt32MSB24:break;
+        case ASIOSTInt32LSB18:break;
+        case ASIOSTInt32LSB20:break;
+        case ASIOSTInt32LSB24:break;
+        case ASIOSTInt24MSB:    break;
+        case ASIOSTInt24LSB:    break;
+        default:              break;
 
     }
 }
@@ -1029,13 +1029,13 @@ static PaError InitPaDeviceInfoFromAsioDriver( PaAsioHostApiRepresentation *asio
     result = LoadAsioDriver( asioHostApi, driverName, &paAsioDriver.info, asioHostApi->systemSpecific );
     if( result == paNoError )
     {
-        PA_DEBUG(("PaAsio_Initialize: drv:%d name = %s\n",  driverIndex,deviceInfo->name));
-        PA_DEBUG(("PaAsio_Initialize: drv:%d inputChannels       = %d\n", driverIndex, paAsioDriver.info.inputChannelCount));
-        PA_DEBUG(("PaAsio_Initialize: drv:%d outputChannels      = %d\n", driverIndex, paAsioDriver.info.outputChannelCount));
-        PA_DEBUG(("PaAsio_Initialize: drv:%d bufferMinSize       = %d\n", driverIndex, paAsioDriver.info.bufferMinSize));
-        PA_DEBUG(("PaAsio_Initialize: drv:%d bufferMaxSize       = %d\n", driverIndex, paAsioDriver.info.bufferMaxSize));
-        PA_DEBUG(("PaAsio_Initialize: drv:%d bufferPreferredSize = %d\n", driverIndex, paAsioDriver.info.bufferPreferredSize));
-        PA_DEBUG(("PaAsio_Initialize: drv:%d bufferGranularity   = %d\n", driverIndex, paAsioDriver.info.bufferGranularity));
+        
+        
+        
+        
+        
+        
+        
 
         deviceInfo->maxInputChannels  = paAsioDriver.info.inputChannelCount;
         deviceInfo->maxOutputChannels = paAsioDriver.info.outputChannelCount;
@@ -1053,7 +1053,7 @@ static PaError InitPaDeviceInfoFromAsioDriver( PaAsioHostApiRepresentation *asio
             }
         }
 
-        PA_DEBUG(("PaAsio_Initialize: drv:%d defaultSampleRate = %f\n", driverIndex, deviceInfo->defaultSampleRate));
+        
 
         if( foundDefaultSampleRate ){
 
@@ -1088,10 +1088,10 @@ static PaError InitPaDeviceInfoFromAsioDriver( PaAsioHostApiRepresentation *asio
             deviceInfo->defaultHighOutputLatency = 0.;
         }
 
-        PA_DEBUG(("PaAsio_Initialize: drv:%d defaultLowInputLatency = %f\n", driverIndex, deviceInfo->defaultLowInputLatency));
-        PA_DEBUG(("PaAsio_Initialize: drv:%d defaultLowOutputLatency = %f\n", driverIndex, deviceInfo->defaultLowOutputLatency));
-        PA_DEBUG(("PaAsio_Initialize: drv:%d defaultHighInputLatency = %f\n", driverIndex, deviceInfo->defaultHighInputLatency));
-        PA_DEBUG(("PaAsio_Initialize: drv:%d defaultHighOutputLatency = %f\n", driverIndex, deviceInfo->defaultHighOutputLatency));
+        
+        
+        
+        
 
         asioDeviceInfo->minBufferSize = paAsioDriver.info.bufferMinSize;
         asioDeviceInfo->maxBufferSize = paAsioDriver.info.bufferMaxSize;
@@ -1276,7 +1276,7 @@ PaError PaAsio_Initialize( PaUtilHostApiRepresentation **hostApi, PaHostApiIndex
 
         for( int i=0; i < driverCount; ++i )
         {
-            PA_DEBUG(("ASIO names[%d]:%s\n",i,names[i]));
+            
 
             // Since portaudio opens ALL ASIO drivers, and no one else does that,
             // we face fact that some drivers were not meant for it, drivers which act
@@ -1291,7 +1291,7 @@ PaError PaAsio_Initialize( PaUtilHostApiRepresentation **hostApi, PaHostApiIndex
                 || strncmp(names[i],"Adobe",5)                         == 0   //"Adobe Default Windows Sound 1.5"
                )
             {
-                PA_DEBUG(("BLACKLISTED!!!\n"));
+                
                 continue;
             }
 
@@ -1302,7 +1302,7 @@ PaError PaAsio_Initialize( PaUtilHostApiRepresentation **hostApi, PaHostApiIndex
                    if a debugger is running. So we don't load it if a debugger is running. */
                 if( strcmp(names[i], "ASIO Digidesign Driver") == 0 )
                 {
-                    PA_DEBUG(("BLACKLISTED!!! ASIO Digidesign Driver would quit the debugger\n"));
+                    
                     continue;
                 }
             }
@@ -1325,7 +1325,7 @@ PaError PaAsio_Initialize( PaUtilHostApiRepresentation **hostApi, PaHostApiIndex
                 }
                 else
                 {
-                    PA_DEBUG(("Skipping ASIO device:%s\n",names[i]));
+                    
                     continue;
                 }
             }
@@ -1946,11 +1946,10 @@ static bool IsUsingExternalClockSource()
 
     asioError = ASIOGetClockSources(clocks, &numSources);
     if( asioError != ASE_OK ){
-        PA_DEBUG(("ERROR: ASIOGetClockSources: %s\n", PaAsio_GetAsioErrorText(asioError) ));
     }else{
-        PA_DEBUG(("INFO ASIOGetClockSources listing %d clocks\n", numSources ));
+        
         for (int i=0;i<numSources;++i){
-            PA_DEBUG(("ASIOClockSource%d %s current:%d\n", i, clocks[i].name, clocks[i].isCurrentSource ));
+            
 
             if (clocks[i].isCurrentSource)
                 result = true;
@@ -1969,12 +1968,10 @@ static PaError ValidateAndSetSampleRate( double sampleRate )
     // check that the device supports the requested sample rate
 
     asioError = ASIOCanSampleRate( sampleRate );
-    PA_DEBUG(("ASIOCanSampleRate(%f):%d\n", sampleRate, asioError ));
 
     if( asioError != ASE_OK )
     {
         result = paInvalidSampleRate;
-        PA_DEBUG(("ERROR: ASIOCanSampleRate: %s\n", PaAsio_GetAsioErrorText(asioError) ));
         goto error;
     }
 
@@ -1986,15 +1983,13 @@ static PaError ValidateAndSetSampleRate( double sampleRate )
     if( asioError != ASE_OK )
     {
         result = paInvalidSampleRate;
-        PA_DEBUG(("ERROR: ASIOGetSampleRate: %s\n", PaAsio_GetAsioErrorText(asioError) ));
         goto error;
     }
-    PA_DEBUG(("ASIOGetSampleRate:%f\n",oldRate));
+    
 
     if (oldRate != sampleRate){
         /* Set sample rate */
 
-        PA_DEBUG(("before ASIOSetSampleRate(%f)\n",sampleRate));
 
         /*
             If you have problems with some drivers when externally clocked,
@@ -2010,14 +2005,12 @@ static PaError ValidateAndSetSampleRate( double sampleRate )
         if( asioError != ASE_OK )
         {
             result = paInvalidSampleRate;
-            PA_DEBUG(("ERROR: ASIOSetSampleRate: %s\n", PaAsio_GetAsioErrorText(asioError) ));
             goto error;
         }
-        PA_DEBUG(("after ASIOSetSampleRate(%f)\n",sampleRate));
     }
     else
     {
-        PA_DEBUG(("No Need to change SR\n"));
+        
     }
 
 error:
@@ -2046,9 +2039,6 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
     /* Open debug log at start of OpenStream */
     // OpenDebugLog(); // DISABLED - no debug logging in production
     
-//     PA_DEBUG_LOG("\n\n=== OpenStream Called ===\n");
-//     PA_DEBUG_LOG("framesPerBuffer=%lu, sampleRate=%f\n", framesPerBuffer, sampleRate);
-//     PA_DEBUG_LOG("inputParameters=%s, outputParameters=%s\n", 
 //                  inputParameters ? "yes" : "no", outputParameters ? "yes" : "no");
     
     PaError result = paNoError;
@@ -2086,7 +2076,7 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
         one device open at a time */
     if( asioHostApi->openAsioDeviceIndex != paNoDevice )
     {
-        PA_DEBUG(("OpenStream paDeviceUnavailable\n"));
+        
         return paDeviceUnavailable;
     }
 
@@ -2098,7 +2088,7 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
 
         if( inputParameters->device != outputParameters->device )
         {
-            PA_DEBUG(("OpenStream paBadIODeviceCombination\n"));
+            
             return paBadIODeviceCombination;
         }
     }
@@ -2173,7 +2163,7 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
     if( result == paNoError )
         asioIsInitialized = 1;
     else{
-        PA_DEBUG(("OpenStream ERROR1 - LoadAsioDriver returned %d\n", result));
+        
         goto error;
     }
 
@@ -2183,7 +2173,7 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
         if( inputChannelCount > driverInfo->inputChannelCount )
         {
             result = paInvalidChannelCount;
-            PA_DEBUG(("OpenStream ERROR2\n"));
+            
             goto error;
         }
     }
@@ -2194,7 +2184,7 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
         if( outputChannelCount > driverInfo->outputChannelCount )
         {
             result = paInvalidChannelCount;
-            PA_DEBUG(("OpenStream ERROR3\n"));
+            
             goto error;
         }
     }
@@ -2211,7 +2201,7 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
 
     /* validate platform specific flags */
     if( (streamFlags & paPlatformSpecificFlags) != 0 ){
-        PA_DEBUG(("OpenStream invalid flags!!\n"));
+        
         return paInvalidFlag; /* unexpected platform specific flag */
     }
 
@@ -2220,7 +2210,7 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
     if( !stream )
     {
         result = paInsufficientMemory;
-        PA_DEBUG(("OpenStream ERROR5\n"));
+        
         goto error;
     }
     stream->blockingState = NULL; /* Blocking i/o not initialized, yet. */
@@ -2231,7 +2221,7 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
     {
         result = paUnanticipatedHostError;
         PA_ASIO_SET_LAST_SYSTEM_ERROR( GetLastError() );
-        PA_DEBUG(("OpenStream ERROR6\n"));
+        
         goto error;
     }
     completedBuffersPlayedEventInited = 1;
@@ -2299,34 +2289,23 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
     int outputChannelOffset = 2;  /* FORCE: Always offset to channels 2/3 (physical 3/4) */
     int totalAsioOutputChannels = outputChannelCount + outputChannelOffset;
     
-    PA_DEBUG(("PaAsioOpenStream: ===== CHANNEL MAPPING DEBUG =====\n"));
-    PA_DEBUG(("PaAsioOpenStream: FORCED CHANNEL OFFSET = %d\n", outputChannelOffset));
-    PA_DEBUG(("PaAsioOpenStream: User requested outputChannelCount = %d\n", outputChannelCount));
-    PA_DEBUG(("PaAsioOpenStream: Device reports driverInfo->outputChannelCount = %ld\n", driverInfo->outputChannelCount));
-    PA_DEBUG(("PaAsioOpenStream: Would need %d channels total (offset %d + count %d)\n", 
-              totalAsioOutputChannels, outputChannelOffset, outputChannelCount));
+    
+    
+    
     
     /* Validate that device has enough output channels for the offset mapping */
     if( totalAsioOutputChannels > driverInfo->outputChannelCount )
     {
-        PA_DEBUG(("PaAsioOpenStream: WARNING: Driver has fewer channels than needed!\n"));
-        PA_DEBUG(("PaAsioOpenStream: Driver channels: %ld, Required: %d\n",
-                  driverInfo->outputChannelCount, totalAsioOutputChannels));
         /* Fall back to default mapping if not enough channels */
         outputChannelOffset = 0;
         totalAsioOutputChannels = outputChannelCount;
-        PA_DEBUG(("PaAsioOpenStream: FALLING BACK to default (channels 1/2)\n"));
     }
     else
     {
-        PA_DEBUG(("PaAsioOpenStream: SUCCESS: Channel mapping ENABLED\n"));
-        PA_DEBUG(("PaAsioOpenStream: Audio will go to ASIO channels %d-%d (physical %d-%d)\n",
-                  outputChannelOffset, outputChannelOffset + outputChannelCount - 1,
-                  outputChannelOffset + 1, outputChannelOffset + outputChannelCount));
     }
-    PA_DEBUG(("PaAsioOpenStream: Final outputChannelOffset = %d\n", outputChannelOffset));
-    PA_DEBUG(("PaAsioOpenStream: Final totalAsioOutputChannels = %d\n", totalAsioOutputChannels));
-    PA_DEBUG(("PaAsioOpenStream: =====================================\n"));
+    
+    
+    
     
     /* Store the output channel offset in the stream structure for use by other functions */
     stream->outputChannelOffset = outputChannelOffset;
@@ -2337,7 +2316,6 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
     if( !stream->asioBufferInfos )
     {
         result = paInsufficientMemory;
-        PA_DEBUG(("OpenStream ERROR7\n"));
         goto error;
     }
 
@@ -2347,7 +2325,7 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
     if( outputChannelCount > 0 && !stream->outputChannelMap )
     {
         result = paInsufficientMemory;
-        PA_DEBUG(("OpenStream ERROR7b\n"));
+        
         goto error;
     }
 
@@ -2388,11 +2366,9 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
         
         if( i < outputChannelOffset )
         {
-            PA_DEBUG(("Output buffer %d: channelNum = %d (DUMMY - will be silenced)\n", i, info->channelNum));
         }
         else
         {
-            PA_DEBUG(("Output buffer %d: channelNum = %d (ACTUAL AUDIO)\n", i, info->channelNum));
         }
     }
 
@@ -2425,33 +2401,14 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
                 ? suggestedInputLatencyFrames
                 : suggestedOutputLatencyFrames);
 
-        // FIX: Always prefer ASIO driver's buffer size over PortAudio's latency calculation.
-        // The driver knows best what buffer size works for its hardware and timing.
-        // This prevents applications like WinUAE from experiencing timing mismatches
-        // when PortAudio would otherwise override with larger latency-based buffers.
-        if( driverInfo->bufferPreferredSize > 0 )
-        {
-            // Use driver's preferred size as the primary choice
-            framesPerHostBuffer = driverInfo->bufferPreferredSize;
-            
-            // Validate it's within driver constraints
-            if( framesPerHostBuffer < (unsigned long)driverInfo->bufferMinSize )
-                framesPerHostBuffer = driverInfo->bufferMinSize;
-            if( framesPerHostBuffer > (unsigned long)driverInfo->bufferMaxSize )
-                framesPerHostBuffer = driverInfo->bufferMaxSize;
-        }
-        else
-        {
-            // Driver didn't provide a valid preferred size, use latency calculation
-            framesPerHostBuffer = SelectHostBufferSize( targetBufferingLatencyFrames,
-                    framesPerBuffer, driverInfo );
-        }
+        /* Direct approach: use ASIO driver's preferred buffer size.
+           This matches the user's ASIO control panel setting exactly.
+           WinUAE will sync its internal buffers to whatever the driver reports.
+        */
+        framesPerHostBuffer = driverInfo->bufferPreferredSize;
     }
 
 
-    PA_DEBUG(("PaAsioOpenStream: framesPerHostBuffer :%d\n",  framesPerHostBuffer));
-    PA_DEBUG(("PaAsioOpenStream: Creating buffers for %d input + %d output channels\n", 
-              inputChannelCount, totalAsioOutputChannels));
 
     asioError = ASIOCreateBuffers( stream->asioBufferInfos,
             inputChannelCount + totalAsioOutputChannels,
@@ -2460,7 +2417,6 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
     if( asioError != ASE_OK
             && framesPerHostBuffer != (unsigned long)driverInfo->bufferPreferredSize )
     {
-        PA_DEBUG(("ERROR: ASIOCreateBuffers: %s\n", PaAsio_GetAsioErrorText(asioError) ));
         /*
             Some buggy drivers (like the Hoontech DSP24) give incorrect
             [min, preferred, max] values They should work with the preferred size
@@ -2470,7 +2426,7 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
 
         framesPerHostBuffer = driverInfo->bufferPreferredSize;
 
-        PA_DEBUG(("PaAsioOpenStream: CORRECTED framesPerHostBuffer :%d\n",  framesPerHostBuffer));
+        
 
         ASIOError asioError2 = ASIOCreateBuffers( stream->asioBufferInfos,
                 inputChannelCount + totalAsioOutputChannels,
@@ -2483,7 +2439,7 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
     {
         result = paUnanticipatedHostError;
         PA_ASIO_SET_LAST_ASIO_ERROR( asioError );
-        PA_DEBUG(("OpenStream ERROR9\n"));
+        
         goto error;
     }
 
@@ -2495,7 +2451,7 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
     if( !stream->asioChannelInfos )
     {
         result = paInsufficientMemory;
-        PA_DEBUG(("OpenStream ERROR10\n"));
+        
         goto error;
     }
 
@@ -2509,7 +2465,7 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
         {
             result = paUnanticipatedHostError;
             PA_ASIO_SET_LAST_ASIO_ERROR( asioError );
-            PA_DEBUG(("OpenStream ERROR11\n"));
+            
             goto error;
         }
     }
@@ -2519,7 +2475,7 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
     if( !stream->bufferPtrs )
     {
         result = paInsufficientMemory;
-        PA_DEBUG(("OpenStream ERROR12\n"));
+        
         goto error;
     }
 
@@ -2574,7 +2530,6 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
             stream->outputBufferPtrs[0][i] = stream->asioBufferInfos[asioBufferIndex].buffers[0];
             stream->outputBufferPtrs[1][i] = stream->asioBufferInfos[asioBufferIndex].buffers[1];
             
-            PA_DEBUG(("Mapping PA output %d → ASIO buffer[%d] channelNum=%d (physical %d)\n",
                       i, asioBufferIndex, outputChannelOffset + i, outputChannelOffset + i + 1));
         }
     }
@@ -2598,7 +2553,7 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
         */
         ASIOSampleType inputType = stream->asioChannelInfos[0].type;
 
-        PA_DEBUG(("ASIO Input  type:%d",inputType));
+        
         AsioSampleTypeLOG(inputType);
         hostInputSampleFormat = AsioSampleTypeToPaNativeSampleFormat( inputType );
 
@@ -2623,7 +2578,6 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
         int firstOutputAsioIndex = inputChannelCount + outputChannelOffset;
         ASIOSampleType outputType = stream->asioChannelInfos[firstOutputAsioIndex].type;
 
-        PA_DEBUG(("ASIO Output type:%d (from ASIO channel %d, physical output %d)\n",
                   outputType, outputChannelOffset, outputChannelOffset + 1));
         AsioSampleTypeLOG(outputType);
         hostOutputSampleFormat = AsioSampleTypeToPaNativeSampleFormat( outputType );
@@ -2649,7 +2603,6 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
         if( !stream->blockingState )
         {
             result = paInsufficientMemory;
-            PA_DEBUG(("ERROR! Blocking i/o interface struct allocation failed in OpenStream()\n"));
             goto error;
         }
 
@@ -2687,7 +2640,7 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
                                                     streamCallback                        ,
                                                     userData                               );
         if( result != paNoError ){
-            PA_DEBUG(("OpenStream ERROR13\n"));
+            
             goto error;
         }
         callbackBufferProcessorInited = TRUE;
@@ -2707,7 +2660,6 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
                                                    paUtilBoundedHostBufferSize           ,
                                                    NULL, NULL                            );/* No callback! */
         if( result != paNoError ){
-            PA_DEBUG(("ERROR! Blocking i/o buffer processor initialization failed in OpenStream()\n"));
             goto error;
         }
         blockingBufferProcessorInited = TRUE;
@@ -2721,7 +2673,6 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
             {
                 result = paUnanticipatedHostError;
                 PA_ASIO_SET_LAST_SYSTEM_ERROR( GetLastError() );
-                PA_DEBUG(("ERROR! Blocking i/o \"read frames ready\" event creation failed in OpenStream()\n"));
                 goto error;
             }
             blockingReadFramesReadyEventInitialized = 1;
@@ -2732,7 +2683,6 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
             if( !stream->blockingState->readStreamBuffer )
             {
                 result = paInsufficientMemory;
-                PA_DEBUG(("ERROR! Blocking i/o read stream buffer allocation failed in OpenStream()\n"));
                 goto error;
             }
 
@@ -2772,7 +2722,6 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
                the buffer processor latency nor the blocking i/o latency. It
                reports the added latency separately.
             */
-            PA_DEBUG(("PaAsio : ASIO InputLatency = %ld (%ld ms),\n         added buffProc:%ld (%ld ms),\n         added blocking:%ld (%ld ms)\n",
                 stream->asioInputLatencyFrames,
                 (long)( stream->asioInputLatencyFrames * (1000.0 / sampleRate) ),
                 PaUtil_GetBufferProcessorInputLatencyFrames(&stream->bufferProcessor),
@@ -2789,7 +2738,6 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
             if( !stream->blockingState->readRingBufferData )
             {
                 result = paInsufficientMemory;
-                PA_DEBUG(("ERROR! Blocking i/o input ring buffer allocation failed in OpenStream()\n"));
                 goto error;
             }
 
@@ -2808,7 +2756,6 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
             {
                 result = paUnanticipatedHostError;
                 PA_ASIO_SET_LAST_SYSTEM_ERROR( GetLastError() );
-                PA_DEBUG(("ERROR! Blocking i/o \"write buffers ready\" event creation failed in OpenStream()\n"));
                 goto error;
             }
             blockingWriteBuffersReadyEventInitialized = 1;
@@ -2818,7 +2765,6 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
             if( !stream->blockingState->writeStreamBuffer )
             {
                 result = paInsufficientMemory;
-                PA_DEBUG(("ERROR! Blocking i/o write stream buffer allocation failed in OpenStream()\n"));
                 goto error;
             }
 
@@ -2863,7 +2809,6 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
                the buffer processor latency nor the blocking i/o latency. It
                reports the added latency separately.
             */
-            PA_DEBUG(("PaAsio : ASIO OutputLatency = %ld (%ld ms),\n         added buffProc:%ld (%ld ms),\n         added blocking:%ld (%ld ms)\n",
                 stream->asioOutputLatencyFrames,
                 (long)( stream->asioOutputLatencyFrames * (1000.0 / sampleRate) ),
                 PaUtil_GetBufferProcessorOutputLatencyFrames(&stream->bufferProcessor),
@@ -2880,7 +2825,6 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
             if( !stream->blockingState->writeRingBufferData )
             {
                 result = paInsufficientMemory;
-                PA_DEBUG(("ERROR! Blocking i/o output ring buffer allocation failed in OpenStream()\n"));
                 goto error;
             }
 
@@ -2904,7 +2848,7 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
                         framesPerHostBuffer, paUtilFixedHostBufferSize,
                         streamCallback, userData );
         if( result != paNoError ){
-            PA_DEBUG(("OpenStream ERROR13\n"));
+            
             goto error;
         }
         callbackBufferProcessorInited = TRUE;
@@ -2919,14 +2863,12 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
 
         // the code below prints the ASIO latency which doesn't include the
         // buffer processor latency. it reports the added latency separately
-        PA_DEBUG(("PaAsio : ASIO InputLatency = %ld (%ld ms), added buffProc:%ld (%ld ms)\n",
                 stream->asioInputLatencyFrames,
                 (long)((stream->asioInputLatencyFrames*1000)/ sampleRate),
                 PaUtil_GetBufferProcessorInputLatencyFrames(&stream->bufferProcessor),
                 (long)((PaUtil_GetBufferProcessorInputLatencyFrames(&stream->bufferProcessor)*1000)/ sampleRate)
                 ));
 
-        PA_DEBUG(("PaAsio : ASIO OuputLatency = %ld (%ld ms), added buffProc:%ld (%ld ms)\n",
                 stream->asioOutputLatencyFrames,
                 (long)((stream->asioOutputLatencyFrames*1000)/ sampleRate),
                 PaUtil_GetBufferProcessorOutputLatencyFrames(&stream->bufferProcessor),
@@ -2951,7 +2893,7 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
     return result;
 
 error:
-    PA_DEBUG(("goto errored\n"));
+    
     if( stream )
     {
         if( stream->blockingState )
@@ -3386,7 +3328,6 @@ static void sampleRateChanged(ASIOSampleRate sRate)
     // You might have to update time/sample related conversion routines, etc.
 
     (void) sRate; /* unused parameter */
-    PA_DEBUG( ("sampleRateChanged : %d \n", sRate));
 }
 
 static long asioMessages(long selector, long value, void* message, double* opt)
@@ -3398,7 +3339,6 @@ static long asioMessages(long selector, long value, void* message, double* opt)
     (void) message; /* unused parameters */
     (void) opt;
 
-    PA_DEBUG( ("asioMessages : %d , %d \n", selector, value));
 
     switch(selector)
     {
@@ -3486,7 +3426,6 @@ static PaError StartStream( PaStream *s )
 
     if( stream->outputChannelCount > 0 )
     {
-        PA_DEBUG(("StartStream: Zeroing output buffers, offset=%d, count=%d, total=%d\n",
                   stream->outputChannelOffset, stream->outputChannelCount,
                   stream->outputChannelOffset + stream->outputChannelCount));
         ZeroOutputBuffers( stream, 0 );
@@ -3625,13 +3564,11 @@ static PaError StopStream( PaStream *s )
             /* If something seriously went wrong... */
             if( waitResult == WAIT_FAILED )
             {
-                PA_DEBUG(("WaitForSingleObject() failed in StopStream()\n"));
                 result = paUnanticipatedHostError;
                 PA_ASIO_SET_LAST_SYSTEM_ERROR( GetLastError() );
             }
             else if( waitResult == WAIT_TIMEOUT )
             {
-                PA_DEBUG(("WaitForSingleObject() timed out in StopStream()\n"));
                 result = paTimedOut;
             }
         }
@@ -3649,7 +3586,6 @@ static PaError StopStream( PaStream *s )
                 (DWORD)(stream->streamRepresentation.streamInfo.outputLatency * 1000. * 4.) )
                     == WAIT_TIMEOUT )
         {
-            PA_DEBUG(("WaitForSingleObject() timed out in StopStream()\n" ));
         }
     }
 
@@ -3786,7 +3722,6 @@ static PaError ReadStream( PaStream      *s     ,
     /* Check if the stream is still available ready to gather new data. */
     if( blockingState->stopFlag || !stream->isActive )
     {
-        PA_DEBUG(("Warning! Stream no longer available for reading in ReadStream()\n"));
         result = paStreamIsStopped;
         return result;
     }
@@ -3833,14 +3768,12 @@ static PaError ReadStream( PaStream      *s     ,
                 /* If something seriously went wrong... */
                 if( waitResult == WAIT_FAILED )
                 {
-                    PA_DEBUG(("WaitForSingleObject() failed in ReadStream()\n"));
                     result = paUnanticipatedHostError;
                     PA_ASIO_SET_LAST_SYSTEM_ERROR( GetLastError() );
                     return result;
                 }
                 else if( waitResult == WAIT_TIMEOUT )
                 {
-                    PA_DEBUG(("WaitForSingleObject() timed out in ReadStream()\n"));
 
                     /* If block processing has stopped, abort! */
                     if( blockingState->stopFlag ) { return result = paStreamIsStopped; }
@@ -3956,7 +3889,6 @@ static PaError WriteStream( PaStream      *s     ,
     /* Check if the stream is still available ready to receive new data. */
     if( blockingState->stopFlag || !stream->isActive )
     {
-        PA_DEBUG(("Warning! Stream no longer available for writing in WriteStream()\n"));
         result = paStreamIsStopped;
         return result;
     }
@@ -4004,14 +3936,12 @@ static PaError WriteStream( PaStream      *s     ,
                 /* If something seriously went wrong... */
                 if( waitResult == WAIT_FAILED )
                 {
-                    PA_DEBUG(("WaitForSingleObject() failed in WriteStream()\n"));
                     result = paUnanticipatedHostError;
                     PA_ASIO_SET_LAST_SYSTEM_ERROR( GetLastError() );
                     return result;
                 }
                 else if( waitResult == WAIT_TIMEOUT )
                 {
-                    PA_DEBUG(("WaitForSingleObject() timed out in WriteStream()\n"));
 
                     /* If block processing has stopped, abort! */
                     if( blockingState->stopFlag ) { return result = paStreamIsStopped; }
@@ -4211,7 +4141,6 @@ static int BlockingIoPaCallback(const void                     *inputBuffer    ,
             /* What do we do if SetEvent() returns zero, i.e. the event
                could not be set? How to return errors from within the
                callback? - S.Fischer */
-            /** @todo report an error with PA_DEBUG */
         }
     }
 
@@ -4283,22 +4212,15 @@ PaError PaAsio_ShowControlPanel( PaDeviceIndex device, void* systemSpecific )
         asioIsInitialized = 1;
     }
 
-PA_DEBUG(("PaAsio_ShowControlPanel: ASIOInit(): %s\n", PaAsio_GetAsioErrorText(asioError) ));
-PA_DEBUG(("asioVersion: ASIOInit(): %ld\n",   asioDriverInfo.asioVersion ));
-PA_DEBUG(("driverVersion: ASIOInit(): %ld\n", asioDriverInfo.driverVersion ));
-PA_DEBUG(("Name: ASIOInit(): %s\n",           asioDriverInfo.name ));
-PA_DEBUG(("ErrorMessage: ASIOInit(): %s\n",   asioDriverInfo.errorMessage ));
 
     asioError = ASIOControlPanel();
     if( asioError != ASE_OK )
     {
-        PA_DEBUG(("PaAsio_ShowControlPanel: ASIOControlPanel(): %s\n", PaAsio_GetAsioErrorText(asioError) ));
         result = paUnanticipatedHostError;
         PA_ASIO_SET_LAST_ASIO_ERROR( asioError );
         goto error;
     }
 
-PA_DEBUG(("PaAsio_ShowControlPanel: ASIOControlPanel(): %s\n", PaAsio_GetAsioErrorText(asioError) ));
 
     asioError = ASIOExit();
     if( asioError != ASE_OK )
@@ -4309,7 +4231,6 @@ PA_DEBUG(("PaAsio_ShowControlPanel: ASIOControlPanel(): %s\n", PaAsio_GetAsioErr
         goto error;
     }
 
-PA_DEBUG(("PaAsio_ShowControlPanel: ASIOExit(): %s\n", PaAsio_GetAsioErrorText(asioError) ));
 
     return result;
 
