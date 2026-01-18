@@ -1403,9 +1403,6 @@ static void Terminate( struct PaUtilHostApiRepresentation *hostApi )
     PaWinUtil_CoUninitialize( paASIO, &asioHostApi->comInitializationResult );
 
     PaUtil_FreeMemory( asioHostApi );
-
-    /* Close debug log */
-    CloseDebugLog();
 }
 
 
@@ -2299,24 +2296,37 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
        - offset=0: use physical channels 1/2
        - offset=2: use physical channels 3/4
     */
-    int outputChannelOffset = asioSpecificStreamInfo ? asioSpecificStreamInfo->outputChannelOffset : 0;
-    
-    /* Validate and adjust outputChannelOffset based on driver capabilities */
-    if( outputChannelOffset < 0 || outputChannelOffset >= (int)driverInfo->outputChannelCount )
-    {
-        /* Invalid offset, fall back to default (channels 1/2) */
-        outputChannelOffset = 0;
-    }
-    
+    int outputChannelOffset = 2;  /* FORCE: Always offset to channels 2/3 (physical 3/4) */
     int totalAsioOutputChannels = outputChannelCount + outputChannelOffset;
     
     PA_DEBUG(("PaAsioOpenStream: ===== CHANNEL MAPPING DEBUG =====\n"));
+    PA_DEBUG(("PaAsioOpenStream: FORCED CHANNEL OFFSET = %d\n", outputChannelOffset));
     PA_DEBUG(("PaAsioOpenStream: User requested outputChannelCount = %d\n", outputChannelCount));
     PA_DEBUG(("PaAsioOpenStream: Device reports driverInfo->outputChannelCount = %ld\n", driverInfo->outputChannelCount));
-    PA_DEBUG(("PaAsioOpenStream: Using outputChannelOffset = %d\n", outputChannelOffset));
-    PA_DEBUG(("PaAsioOpenStream: Total ASIO output buffers needed = %d\n", totalAsioOutputChannels));
-    PA_DEBUG(("PaAsioOpenStream: Audio will go to physical ASIO channels %d-%d\n",
-              outputChannelOffset + 1, outputChannelOffset + outputChannelCount));
+    PA_DEBUG(("PaAsioOpenStream: Would need %d channels total (offset %d + count %d)\n", 
+              totalAsioOutputChannels, outputChannelOffset, outputChannelCount));
+    
+    /* Validate that device has enough output channels for the offset mapping */
+    if( totalAsioOutputChannels > driverInfo->outputChannelCount )
+    {
+        PA_DEBUG(("PaAsioOpenStream: WARNING: Driver has fewer channels than needed!\n"));
+        PA_DEBUG(("PaAsioOpenStream: Driver channels: %ld, Required: %d\n",
+                  driverInfo->outputChannelCount, totalAsioOutputChannels));
+        /* Fall back to default mapping if not enough channels */
+        outputChannelOffset = 0;
+        totalAsioOutputChannels = outputChannelCount;
+        PA_DEBUG(("PaAsioOpenStream: FALLING BACK to default (channels 1/2)\n"));
+    }
+    else
+    {
+        PA_DEBUG(("PaAsioOpenStream: SUCCESS: Channel mapping ENABLED\n"));
+        PA_DEBUG(("PaAsioOpenStream: Audio will go to ASIO channels %d-%d (physical %d-%d)\n",
+                  outputChannelOffset, outputChannelOffset + outputChannelCount - 1,
+                  outputChannelOffset + 1, outputChannelOffset + outputChannelCount));
+    }
+    PA_DEBUG(("PaAsioOpenStream: Final outputChannelOffset = %d\n", outputChannelOffset));
+    PA_DEBUG(("PaAsioOpenStream: Final totalAsioOutputChannels = %d\n", totalAsioOutputChannels));
+    PA_DEBUG(("PaAsioOpenStream: =====================================\n"));
     
     /* Store the output channel offset in the stream structure for use by other functions */
     stream->outputChannelOffset = outputChannelOffset;
