@@ -2529,8 +2529,6 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
             /* Point the output buffer pointer to the correct ASIO buffer */
             stream->outputBufferPtrs[0][i] = stream->asioBufferInfos[asioBufferIndex].buffers[0];
             stream->outputBufferPtrs[1][i] = stream->asioBufferInfos[asioBufferIndex].buffers[1];
-            
-                      i, asioBufferIndex, outputChannelOffset + i, outputChannelOffset + i + 1));
         }
     }
     else
@@ -2578,7 +2576,6 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
         int firstOutputAsioIndex = inputChannelCount + outputChannelOffset;
         ASIOSampleType outputType = stream->asioChannelInfos[firstOutputAsioIndex].type;
 
-                  outputType, outputChannelOffset, outputChannelOffset + 1));
         AsioSampleTypeLOG(outputType);
         hostOutputSampleFormat = AsioSampleTypeToPaNativeSampleFormat( outputType );
 
@@ -2718,18 +2715,6 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
                         + stream->asioInputLatencyFrames )
                 / sampleRate;
 
-            /* The code below prints the ASIO latency which doesn't include
-               the buffer processor latency nor the blocking i/o latency. It
-               reports the added latency separately.
-            */
-                stream->asioInputLatencyFrames,
-                (long)( stream->asioInputLatencyFrames * (1000.0 / sampleRate) ),
-                PaUtil_GetBufferProcessorInputLatencyFrames(&stream->bufferProcessor),
-                (long)( PaUtil_GetBufferProcessorInputLatencyFrames(&stream->bufferProcessor) * (1000.0 / sampleRate) ),
-                PaUtil_GetBufferProcessorInputLatencyFrames(&stream->blockingState->bufferProcessor) + (lBlockingBufferSize / framesPerBuffer - 1) * framesPerBuffer,
-                (long)( (PaUtil_GetBufferProcessorInputLatencyFrames(&stream->blockingState->bufferProcessor) + (lBlockingBufferSize / framesPerBuffer - 1) * framesPerBuffer) * (1000.0 / sampleRate) )
-                ));
-
             /* Determine the size of ring buffer in bytes. */
             lBytesPerFrame = inputChannelCount * Pa_GetSampleSize(inputSampleFormat );
 
@@ -2805,18 +2790,6 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
                         + stream->asioOutputLatencyFrames )
                 / sampleRate;
 
-            /* The code below prints the ASIO latency which doesn't include
-               the buffer processor latency nor the blocking i/o latency. It
-               reports the added latency separately.
-            */
-                stream->asioOutputLatencyFrames,
-                (long)( stream->asioOutputLatencyFrames * (1000.0 / sampleRate) ),
-                PaUtil_GetBufferProcessorOutputLatencyFrames(&stream->bufferProcessor),
-                (long)( PaUtil_GetBufferProcessorOutputLatencyFrames(&stream->bufferProcessor) * (1000.0 / sampleRate) ),
-                PaUtil_GetBufferProcessorOutputLatencyFrames(&stream->blockingState->bufferProcessor) + (lBlockingBufferSize / framesPerBuffer - 1) * framesPerBuffer,
-                (long)( (PaUtil_GetBufferProcessorOutputLatencyFrames(&stream->blockingState->bufferProcessor) + (lBlockingBufferSize / framesPerBuffer - 1) * framesPerBuffer) * (1000.0 / sampleRate) )
-                ));
-
             /* Determine the size of ring buffer in bytes. */
             lBytesPerFrame = outputChannelCount * Pa_GetSampleSize(outputSampleFormat);
 
@@ -2860,20 +2833,6 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
                 (double)( PaUtil_GetBufferProcessorOutputLatencyFrames(&stream->bufferProcessor)
                     + stream->asioOutputLatencyFrames) / sampleRate; // seconds
         stream->streamRepresentation.streamInfo.sampleRate = sampleRate;
-
-        // the code below prints the ASIO latency which doesn't include the
-        // buffer processor latency. it reports the added latency separately
-                stream->asioInputLatencyFrames,
-                (long)((stream->asioInputLatencyFrames*1000)/ sampleRate),
-                PaUtil_GetBufferProcessorInputLatencyFrames(&stream->bufferProcessor),
-                (long)((PaUtil_GetBufferProcessorInputLatencyFrames(&stream->bufferProcessor)*1000)/ sampleRate)
-                ));
-
-                stream->asioOutputLatencyFrames,
-                (long)((stream->asioOutputLatencyFrames*1000)/ sampleRate),
-                PaUtil_GetBufferProcessorOutputLatencyFrames(&stream->bufferProcessor),
-                (long)((PaUtil_GetBufferProcessorOutputLatencyFrames(&stream->bufferProcessor)*1000)/ sampleRate)
-                ));
     }
 
     stream->asioHostApi = asioHostApi;
@@ -3426,8 +3385,6 @@ static PaError StartStream( PaStream *s )
 
     if( stream->outputChannelCount > 0 )
     {
-                  stream->outputChannelOffset, stream->outputChannelCount,
-                  stream->outputChannelOffset + stream->outputChannelCount));
         ZeroOutputBuffers( stream, 0 );
         ZeroOutputBuffers( stream, 1 );
     }
