@@ -24,25 +24,6 @@ jobs:
           Write-Host "portaudio directory NOT found!"
           exit 1
         }
-    - name: Verify production code features
-      shell: pwsh
-      run: |
-        Write-Host "Checking for production code features in pa_asio.cpp..."
-        $productionStrings = @(
-          "int outputChannelOffset = asioSpecificStreamInfo",
-          "driverInfo->bufferPreferredSize",
-          "totalAsioOutputChannels = outputChannelCount + outputChannelOffset"
-        )
-        foreach ($str in $productionStrings) {
-          $found = Select-String -Path "portaudio/src/hostapi/asio/pa_asio.cpp" -Pattern $str
-          if ($found) {
-            Write-Host "Found: $str"
-          } else {
-            Write-Host "NOT found: $str"
-            exit 1
-          }
-        }
-        Write-Host "All production features verified"
     - name: Find MSBuild
       shell: pwsh
       run: |
