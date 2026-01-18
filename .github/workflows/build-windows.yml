@@ -54,7 +54,7 @@ jobs:
         }
         Write-Host "Using ASIO SDK from: $asioPath"
         Write-Host "Running CMake configure with ASIO enabled..."
-        cmake -B build -S . -G "Visual Studio 17 2022" -A x64 -DPA_USE_ASIO=ON -DCMAKE_PREFIX_PATH="$asioPath" -DCMAKE_BUILD_TYPE=Release
+        cmake -B build -S . -G "Visual Studio 17 2022" -A x64 -DPA_USE_ASIO=ON -DCMAKE_PREFIX_PATH="$asioPath" -DCMAKE_BUILD_TYPE=Release -DCMAKE_SHARED_LINKER_FLAGS_RELEASE="/OPT:REF /OPT:ICF"
         if ($LASTEXITCODE -ne 0) {
           Write-Host "CMake configure failed!"
           exit 1
@@ -82,10 +82,6 @@ jobs:
             Get-ChildItem -Path $path -Filter "*.dll" -Recurse | ForEach-Object {
               Copy-Item $_.FullName -Destination "artifacts/portaudio_x64.dll" -Force
               Write-Host "Copied: $($_.Name) -> portaudio_x64.dll"
-            }
-            Get-ChildItem -Path $path -Filter "*.lib" -Recurse | ForEach-Object {
-              Copy-Item $_.FullName -Destination "artifacts/portaudio_x64.lib" -Force
-              Write-Host "Copied: $($_.Name) -> portaudio_x64.lib"
             }
           }
         }
