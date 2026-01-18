@@ -1848,52 +1848,21 @@ static unsigned long SelectHostBufferSize(
         unsigned long targetBufferingLatencyFrames,
         unsigned long userFramesPerBuffer, PaAsioDriverInfo *driverInfo )
 {
-    unsigned long result = 0;
-
-    /* We select a host buffer size based on the following requirements
-       (in priority order):
-
-        1. The host buffer size must be permissible according to the ASIO
-           driverInfo buffer size constraints (min, max, granularity or
-           powers-of-two).
-
-        2. If the user specifies a non-zero framesPerBuffer parameter
-           (userFramesPerBuffer here) the host buffer should be a multiple of
-           this (subject to the constraints in (1) above).
-
-           [NOTE: Where no permissible host buffer size is a multiple of
-           userFramesPerBuffer, we choose a value as if userFramesPerBuffer were
-           zero (i.e. we ignore it). This strategy is open for review ~ perhaps
-           there are still "more optimal" buffer sizes related to
-           userFramesPerBuffer that we could use.]
-
-        3. The host buffer size should be greater than or equal to
-           targetBufferingLatencyFrames, subject to (1) and (2) above. Where it
-           is not possible to select a host buffer size equal or greater than
-           targetBufferingLatencyFrames, the highest buffer size conforming to
-           (1) and (2) should be chosen.
+    /*
+        Modified for WinUAE ASIO buffer synchronization fix.
+        
+        Instead of calculating complex buffer sizes based on target latency,
+        we now ALWAYS use the ASIO driver's preferred buffer size.
+        This ensures hardware stability and eliminates buffer size mismatches
+        between WinUAE's internal buffering and the actual ASIO driver.
+        
+        The driver knows best what buffer size works optimally for its hardware.
     */
 
-    if( userFramesPerBuffer != 0 )
-    {
-        /* userFramesPerBuffer is specified, try to find a buffer size that's
-           a multiple of it */
-        result = SelectHostBufferSizeForSpecifiedUserFramesPerBuffer(
-                targetBufferingLatencyFrames, userFramesPerBuffer, driverInfo );
-    }
+    (void)targetBufferingLatencyFrames; /* unused parameter */
+    (void)userFramesPerBuffer; /* unused parameter */
 
-    if( result == 0 )
-    {
-        /* either userFramesPerBuffer was not specified, or we couldn't find a
-           host buffer size that is a multiple of it. Select a host buffer size
-           according to targetBufferingLatencyFrames and the ASIO driverInfo
-           buffer size constraints.
-         */
-        result = SelectHostBufferSizeForUnspecifiedUserFramesPerBuffer(
-                targetBufferingLatencyFrames, driverInfo );
-    }
-
-    return result;
+    return driverInfo->bufferPreferredSize;
 }
 
 
